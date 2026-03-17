@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: handball-scout-pad
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .
