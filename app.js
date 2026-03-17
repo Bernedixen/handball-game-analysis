@@ -44,6 +44,10 @@ const translations = {
     choosePlayer: "Choose player",
     choosePlayerCopy: "Select the player responsible for this action.",
     settingsGroupCopy: "Choose which context steps should appear in the guided flow.",
+    presetsTitle: "Presets",
+    presetsCopy: "Apply a saved setup for context detail levels.",
+    presetDetailed: "Detailed",
+    presetSimple: "Simple",
     displaySettingsTitle: "Display",
     displaySettingsCopy: "Control how actions are presented in the entry pad.",
     showActionIcons: "Show action icons",
@@ -149,6 +153,10 @@ const translations = {
     choosePlayer: "Välj spelare",
     choosePlayerCopy: "Välj spelaren som ansvarar för händelsen.",
     settingsGroupCopy: "Välj vilka kontextsteg som ska visas i det stegvisa flödet.",
+    presetsTitle: "Förval",
+    presetsCopy: "Använd en sparad uppsättning för detaljnivå i kontexten.",
+    presetDetailed: "Detaljerad",
+    presetSimple: "Enkel",
     displaySettingsTitle: "Visning",
     displaySettingsCopy: "Styr hur händelser visas i inmatningsytan.",
     showActionIcons: "Visa händelseikoner",
@@ -275,6 +283,33 @@ const contextSettings = Object.fromEntries(
 );
 
 contextSettings.SHOT.assistPlayerId = true;
+
+const settingsPresets = {
+  detailed: {
+    SHOT: { height: true, location: true, outcome: true, assistPlayerId: true },
+    PENALTY: { height: true, outcome: true },
+    SAVE: { height: true, location: true },
+    MISS: { height: true, location: true },
+    CARD: { cardType: true },
+    SUSPENSION: { duration: true },
+  },
+  simple: {
+    SHOT: { height: false, location: false, outcome: true, assistPlayerId: true },
+    PENALTY: { height: false, outcome: true },
+    SAVE: { height: false, location: false },
+    MISS: { height: false, location: false },
+    CARD: { cardType: true },
+    SUSPENSION: { duration: true },
+  },
+};
+
+Object.entries(settingsPresets.simple).forEach(([actionId, config]) => {
+  Object.entries(config).forEach(([key, value]) => {
+    if (contextSettings[actionId] && key in contextSettings[actionId]) {
+      contextSettings[actionId][key] = value;
+    }
+  });
+});
 
 const state = {
   language: "en-US",
@@ -587,6 +622,41 @@ function renderSettings() {
   }
 
   settingsPanel.className = "settings-panel";
+
+  const presetsCard = document.createElement("article");
+  presetsCard.className = "settings-card";
+  presetsCard.innerHTML = `
+    <div class="settings-card-header">
+      <div>
+        <p class="log-item-title">${t("presetsTitle")}</p>
+        <p class="log-item-subtitle">${t("presetsCopy")}</p>
+      </div>
+    </div>
+  `;
+
+  const presetRow = document.createElement("div");
+  presetRow.className = "settings-toggle-list";
+
+  const detailedButton = document.createElement("button");
+  detailedButton.type = "button";
+  detailedButton.className = "settings-toggle is-enabled";
+  detailedButton.innerHTML = `<span>${t("presetDetailed")}</span>`;
+  detailedButton.addEventListener("click", () => {
+    applySettingsPreset("detailed");
+  });
+  presetRow.appendChild(detailedButton);
+
+  const simpleButton = document.createElement("button");
+  simpleButton.type = "button";
+  simpleButton.className = "settings-toggle is-enabled";
+  simpleButton.innerHTML = `<span>${t("presetSimple")}</span>`;
+  simpleButton.addEventListener("click", () => {
+    applySettingsPreset("simple");
+  });
+  presetRow.appendChild(simpleButton);
+
+  presetsCard.appendChild(presetRow);
+  settingsPanel.appendChild(presetsCard);
 
   const displayCard = document.createElement("article");
   displayCard.className = "settings-card";
@@ -907,6 +977,38 @@ function toggleContextSetting(actionId, key) {
     state.currentStageIndex = Math.min(state.currentStageIndex, Math.max(0, stages.length - 1));
   }
 
+  render();
+}
+
+function applySettingsPreset(presetName) {
+  const preset = settingsPresets[presetName];
+  if (!preset) {
+    return;
+  }
+
+  Object.entries(preset).forEach(([actionId, config]) => {
+    if (!state.contextSettings[actionId]) {
+      return;
+    }
+
+    Object.entries(config).forEach(([key, value]) => {
+      if (key in state.contextSettings[actionId]) {
+        state.contextSettings[actionId][key] = value;
+      }
+    });
+  });
+
+  if (state.selectedActionId) {
+    const allowedKeys = new Set(getContextGroups(state.selectedActionId).map((group) => group.key));
+    Object.keys(state.context).forEach((key) => {
+      if (!allowedKeys.has(key) && key !== "outcome") {
+        delete state.context[key];
+      }
+    });
+  }
+
+  pruneConditionalContext();
+  normalizeFlowState();
   render();
 }
 
