@@ -279,7 +279,7 @@ contextSettings.SHOT.assistPlayerId = true;
 const state = {
   language: "en-US",
   showActionIcons: true,
-  autoRecordLastDetail: false,
+  autoRecordLastDetail: true,
   selectedPlayerId: null,
   selectedActionId: null,
   context: {},
