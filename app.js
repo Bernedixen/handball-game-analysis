@@ -47,6 +47,7 @@ const translations = {
     displaySettingsTitle: "Display",
     displaySettingsCopy: "Control how actions are presented in the entry pad.",
     showActionIcons: "Show action icons",
+    autoRecordLastDetail: "Auto record on last detail",
     toggleOn: "On",
     toggleOff: "Off",
     noConfigurableContext: "No configurable context groups available.",
@@ -151,6 +152,7 @@ const translations = {
     displaySettingsTitle: "Visning",
     displaySettingsCopy: "Styr hur händelser visas i inmatningsytan.",
     showActionIcons: "Visa händelseikoner",
+    autoRecordLastDetail: "Spara automatiskt vid sista detaljen",
     toggleOn: "På",
     toggleOff: "Av",
     noConfigurableContext: "Inga konfigurerbara kontextsteg finns.",
@@ -279,6 +281,7 @@ const contextSettings = Object.fromEntries(
 const state = {
   language: "en-US",
   showActionIcons: true,
+  autoRecordLastDetail: false,
   selectedPlayerId: null,
   selectedActionId: null,
   context: {},
@@ -391,6 +394,7 @@ function renderActions() {
       state.selectedActionId = action.id;
       state.context = isSameAction ? state.context : {};
       state.currentStageIndex = 0;
+      pruneConditionalContext();
       render();
     });
     actionGrid.appendChild(button);
@@ -443,6 +447,17 @@ function renderFlow() {
   commitButton.textContent = state.editingPlayId ? t("saveChanges") : t("recordPlay");
 }
 
+function handleFlowInputChange() {
+  normalizeFlowState();
+
+  if (state.autoRecordLastDetail && isFlowComplete()) {
+    commitPlay();
+    return;
+  }
+
+  render();
+}
+
 function syncMobileFlowViewport() {
   if (!isMobileViewport()) {
     lastFlowViewportKey = "";
@@ -493,7 +508,7 @@ function renderStage(stage) {
       button.innerHTML = `#${player.number}<small>${player.name}</small>`;
       button.addEventListener("click", () => {
         state.selectedPlayerId = player.id;
-        render();
+        handleFlowInputChange();
       });
       options.appendChild(button);
     });
@@ -506,7 +521,10 @@ function renderStage(stage) {
       button.textContent = formatContextOption(stage.key, option);
       button.addEventListener("click", () => {
         state.context[stage.key] = option;
-        render();
+        if (stage.key === "outcome" && option !== "GOAL") {
+          delete state.context.assistPlayerId;
+        }
+        handleFlowInputChange();
       });
       options.appendChild(button);
     });
@@ -597,6 +615,20 @@ function renderSettings() {
     render();
   });
   displayToggleRow.appendChild(iconToggle);
+
+  const autoRecordToggle = document.createElement("button");
+  autoRecordToggle.type = "button";
+  autoRecordToggle.className = `settings-toggle ${state.autoRecordLastDetail ? "is-enabled" : "is-disabled"}`.trim();
+  autoRecordToggle.innerHTML = `
+    <span>${t("autoRecordLastDetail")}</span>
+    <strong>${state.autoRecordLastDetail ? t("toggleOn") : t("toggleOff")}</strong>
+  `;
+  autoRecordToggle.addEventListener("click", () => {
+    state.autoRecordLastDetail = !state.autoRecordLastDetail;
+    render();
+  });
+  displayToggleRow.appendChild(autoRecordToggle);
+
   displayCard.appendChild(displayToggleRow);
   settingsPanel.appendChild(displayCard);
 
@@ -818,6 +850,8 @@ function normalizeFlowState() {
     return;
   }
 
+  pruneConditionalContext();
+
   const stages = getFlowStages();
   if (!stages.length) {
     state.currentStageIndex = 0;
@@ -850,6 +884,12 @@ function normalizeFlowState() {
   }
 
   state.currentStageIndex = stages.length - 1;
+}
+
+function pruneConditionalContext() {
+  if (!["SHOT", "PENALTY"].includes(state.selectedActionId) || state.context.outcome !== "GOAL") {
+    delete state.context.assistPlayerId;
+  }
 }
 
 function isContextEnabled(actionId, key) {
