@@ -290,10 +290,12 @@ const state = {
 };
 
 const actionGrid = document.querySelector("#action-grid");
+const actionStepCard = document.querySelector("#action-step-card");
 const flowTitle = document.querySelector("#flow-title");
 const flowCopy = document.querySelector("#flow-copy");
 const flowProgress = document.querySelector("#flow-progress");
 const flowStageLabel = document.querySelector("#flow-stage-label");
+const flowCard = document.querySelector("#flow-card");
 const stageHost = document.querySelector("#stage-host");
 const selectionSummary = document.querySelector("#selection-summary");
 const backStepButton = document.querySelector("#back-step");
@@ -311,6 +313,8 @@ const metricsGrid = document.querySelector("#metrics-grid");
 const lastPlayLabel = document.querySelector("#last-play-label");
 const langEnButton = document.querySelector("#lang-en");
 const langSvButton = document.querySelector("#lang-sv");
+
+let lastFlowViewportKey = "";
 
 document.querySelector("#reset-flow").addEventListener("click", resetFlow);
 document.querySelector("#commit-play").addEventListener("click", commitPlay);
@@ -338,6 +342,7 @@ function render() {
   renderEventLog();
   playCount.textContent = String(state.plays.length);
   eventCount.textContent = String(state.events.length);
+  syncMobileFlowViewport();
 }
 
 function renderChromeText() {
@@ -436,6 +441,31 @@ function renderFlow() {
   nextStepButton.disabled = activeIndex >= stages.length - 1 || !isStageComplete(activeStage);
   commitButton.disabled = !isFlowComplete();
   commitButton.textContent = state.editingPlayId ? t("saveChanges") : t("recordPlay");
+}
+
+function syncMobileFlowViewport() {
+  if (!isMobileViewport()) {
+    lastFlowViewportKey = "";
+    return;
+  }
+
+  const viewportKey = state.selectedActionId
+    ? `${state.selectedActionId}:${state.currentStageIndex}:${state.selectedPlayerId ?? "none"}:${state.context.outcome ?? "none"}`
+    : "idle";
+
+  if (viewportKey === lastFlowViewportKey) {
+    return;
+  }
+
+  lastFlowViewportKey = viewportKey;
+
+  const target = state.selectedActionId ? flowCard : actionStepCard;
+  window.requestAnimationFrame(() => {
+    target.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
 }
 
 function renderStage(stage) {
@@ -1188,6 +1218,10 @@ function setLanguage(language) {
 
   state.language = language;
   render();
+}
+
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 720px)").matches;
 }
 
 function formatTime(date) {
