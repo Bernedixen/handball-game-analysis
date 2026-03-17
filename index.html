@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Handball Scout Pad</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Live handball scouting</p>
+        <h1>Track primary actions. Derive the rest.</h1>
+        <p class="hero-copy">
+          A tablet-first entry surface built around player selection, action buttons, and context prompts.
+        </p>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="stat-label">Plays</span>
+          <strong id="play-count">0</strong>
+        </div>
+        <div class="hero-stat">
+          <span class="stat-label">Derived events</span>
+          <strong id="event-count">0</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel entry-panel">
+        <div class="panel-heading">
+          <h2>Entry Pad</h2>
+          <button id="reset-flow" class="ghost-button" type="button">Reset flow</button>
+        </div>
+
+        <div class="step-card">
+          <div class="step-header">
+            <span class="step-index">1</span>
+            <div>
+              <h3>Start Action</h3>
+              <p>All primary actions stay available from the first screen.</p>
+            </div>
+          </div>
+          <div id="action-grid" class="action-grid"></div>
+        </div>
+
+        <div class="step-card flow-card">
+          <div class="step-header">
+            <span class="step-index">2</span>
+            <div>
+              <h3 id="flow-title">Guided Flow</h3>
+              <p id="flow-copy">Pick an action to start the staged entry flow.</p>
+            </div>
+          </div>
+          <div class="flow-progress-row">
+            <div id="flow-progress" class="flow-progress"></div>
+            <span id="flow-stage-label" class="pill">Waiting for action</span>
+          </div>
+          <div id="stage-host" class="stage-host empty-state">
+            Select a primary action above to begin.
+          </div>
+          <div class="flow-footer">
+            <div id="selection-summary" class="selection-summary"></div>
+            <div class="flow-actions">
+              <button id="back-step" class="ghost-button" type="button" disabled>Back</button>
+              <button id="next-step" class="ghost-button" type="button" disabled>Next</button>
+              <button id="commit-play" class="primary-button" type="button" disabled>Record play</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel insights-panel">
+        <div class="panel-heading">
+          <h2>Live match state</h2>
+          <div class="panel-actions">
+            <button id="toggle-settings" class="icon-button" type="button" aria-haspopup="dialog" aria-controls="settings-dialog" aria-label="Open settings">
+              <span class="icon-button-glyph" aria-hidden="true">⚙</span>
+            </button>
+            <button id="seed-demo" class="ghost-button" type="button">Add demo sequence</button>
+          </div>
+        </div>
+
+        <div class="metrics-grid" id="metrics-grid"></div>
+
+        <div class="log-section">
+          <div class="log-header">
+            <h3>Recorded plays</h3>
+            <span id="last-play-label" class="pill">No plays yet</span>
+          </div>
+          <div id="play-log" class="log-list empty-state">
+            Record a play to start building the match timeline.
+          </div>
+        </div>
+
+        <div class="log-section">
+          <div class="log-header">
+            <h3>Derived events</h3>
+            <span class="pill">Auto-generated</span>
+          </div>
+          <div id="event-log" class="log-list empty-state">
+            Derived stat events will appear here.
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="settings-dialog" class="settings-dialog">
+    <div class="settings-dialog-header">
+      <div>
+        <h3>Flow settings</h3>
+        <p>Choose which context steps should appear for each action.</p>
+      </div>
+      <button id="close-settings" class="icon-button" type="button" aria-label="Close settings">
+        <span class="icon-button-glyph" aria-hidden="true">×</span>
+      </button>
+    </div>
+    <div id="settings-panel" class="settings-panel"></div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
