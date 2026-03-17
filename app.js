@@ -274,9 +274,7 @@ const contextSettings = Object.fromEntries(
   ]),
 );
 
-["SHOT", "PENALTY"].forEach((actionId) => {
-  contextSettings[actionId].assistPlayerId = true;
-});
+contextSettings.SHOT.assistPlayerId = true;
 
 const state = {
   language: "en-US",
@@ -801,7 +799,7 @@ function getContextGroups(actionId) {
 
   const groups = (contextDefinitions[actionId] ?? []).filter((group) => isContextEnabled(actionId, group.key));
 
-  if (["SHOT", "PENALTY"].includes(actionId) && state.context.outcome === "GOAL" && isContextEnabled(actionId, "assistPlayerId")) {
+  if (actionId === "SHOT" && state.context.outcome === "GOAL" && isContextEnabled(actionId, "assistPlayerId")) {
     groups.push({
       key: "assistPlayerId",
       label: getContextLabel("assistPlayerId"),
@@ -887,7 +885,7 @@ function normalizeFlowState() {
 }
 
 function pruneConditionalContext() {
-  if (!["SHOT", "PENALTY"].includes(state.selectedActionId) || state.context.outcome !== "GOAL") {
+  if (state.selectedActionId !== "SHOT" || state.context.outcome !== "GOAL") {
     delete state.context.assistPlayerId;
   }
 }
@@ -1080,7 +1078,7 @@ function deriveShotEvents(player, baseDimensions, context, createEvent, shotType
     events.push(createEvent("GOAL", player.name, shotDimensions));
     events.push(createEvent("SHOT_ON_GOAL", player.name, baseDimensions));
     events.push(createEvent(`GOAL_ALLOWED_${context.height}`, "Goalkeeper", shotDimensions));
-    if (context.assistPlayerId && context.assistPlayerId !== "NONE") {
+    if (shotType === "shot" && context.assistPlayerId && context.assistPlayerId !== "NONE") {
       events.push(createEvent("ASSIST", playerLabelFromId(context.assistPlayerId), {
         target_player: player.name,
         shot_type: shotType,
