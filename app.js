@@ -294,7 +294,7 @@ const settingsPresets = {
     SUSPENSION: { duration: true },
   },
   simple: {
-    SHOT: { height: false, location: false, outcome: true, assistPlayerId: true },
+    SHOT: { height: false, location: false, outcome: true, assistPlayerId: false },
     PENALTY: { height: false, outcome: true },
     SAVE: { height: false, location: false },
     MISS: { height: false, location: false },
