@@ -312,7 +312,7 @@ Object.entries(settingsPresets.simple).forEach(([actionId, config]) => {
 });
 
 const state = {
-  language: "en-US",
+  language: "sv-SE",
   showActionIcons: true,
   autoRecordLastDetail: true,
   selectedPlayerId: null,
