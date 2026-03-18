@@ -83,18 +83,38 @@ const translations = {
     delete: "Delete",
     flowSuffix: "flow",
     captureContext: "Capture {label} before recording the play.",
+    metricTotalShots: "Total shots",
+    metricTotalShotsCaption: "All registered shot attempts including penalties",
     metricGoals: "Goals",
-    metricGoalsCaption: "Derived from shot outcomes and scoring events",
+    metricGoalsCaption: "Scoring events from shots and penalties",
+    metricMisses: "Misses",
+    metricMissesCaption: "Off-target or missed attempts",
     metricShotsOnGoal: "Shots on goal",
-    metricShotsOnGoalCaption: "Goals and saves",
-    metricShotEfficiency: "Shot efficiency",
+    metricShotsOnGoalCaption: "Goals and saved on-target shots",
+    metricSaves: "Saves",
+    metricSavesCaption: "Goalkeeper saves against shots on goal",
+    metricSavePercentage: "Save %",
+    metricSavePercentageCaption: "Saves divided by shots on goal",
+    metricGroupShooting: "Shooting",
+    metricGroupGoalkeeping: "Shots on goal",
+    metricGroupPenalties: "Penalties",
+    metricGroupDiscipline: "Discipline",
+    metricShotEfficiency: "Efficiency",
     metricShotEfficiencyCaption: "Goals divided by total shots",
-    metricKeeperSaves: "Keeper saves",
-    metricKeeperSavesCaption: "Auto-created or manual goalkeeper saves",
+    metricPenalties: "Penalties",
+    metricPenaltiesCaption: "Registered 7m attempts",
     metricPenaltyGoals: "Penalty goals",
-    metricPenaltyGoalsCaption: "Goals tagged as penalties",
+    metricPenaltyGoalsCaption: "Goals scored from 7m",
+    metricPenaltyMisses: "Penalty misses",
+    metricPenaltyMissesCaption: "Saved or missed 7m attempts",
+    metricPenaltyEfficiency: "Penalty efficiency",
+    metricPenaltyEfficiencyCaption: "Penalty goals divided by penalties",
+    metricTechFaults: "Technical faults",
+    metricTechFaultsCaption: "Turnovers and handling faults",
+    metricSuspensions: "Suspensions",
+    metricSuspensionsCaption: "2-minute suspensions",
     metricWarnings: "Warnings",
-    metricWarningsCaption: "Cards mapped to warning events",
+    metricWarningsCaption: "Yellow cards",
     summaryMode: "MODE",
     summaryPlayer: "PLAYER",
     summaryAction: "ACTION",
@@ -213,18 +233,38 @@ const translations = {
     delete: "Ta bort",
     flowSuffix: "flöde",
     captureContext: "Registrera {label} innan spelet sparas.",
+    metricTotalShots: "Totala skott",
+    metricTotalShotsCaption: "Alla registrerade avslut inklusive straffar",
     metricGoals: "Mål",
-    metricGoalsCaption: "Härleds från skottutfall och mål-händelser",
+    metricGoalsCaption: "Mål från skott och straffar",
+    metricMisses: "Missar",
+    metricMissesCaption: "Missade eller utanför avslut",
     metricShotsOnGoal: "Skott på mål",
-    metricShotsOnGoalCaption: "Mål och räddningar",
-    metricShotEfficiency: "Skotteffektivitet",
-    metricShotEfficiencyCaption: "Mål dividerat med antal skott",
-    metricKeeperSaves: "Målvaktsräddningar",
-    metricKeeperSavesCaption: "Automatiska eller manuella målvaktsräddningar",
+    metricShotsOnGoalCaption: "Mål och räddade avslut på mål",
+    metricSaves: "Räddningar",
+    metricSavesCaption: "Målvaktsräddningar på skott på mål",
+    metricSavePercentage: "Räddningsprocent",
+    metricSavePercentageCaption: "Räddningar dividerat med skott på mål",
+    metricGroupShooting: "Avslut",
+    metricGroupGoalkeeping: "Skott på mål",
+    metricGroupPenalties: "Straffar",
+    metricGroupDiscipline: "Disciplin",
+    metricShotEfficiency: "Effektivitet",
+    metricShotEfficiencyCaption: "Mål dividerat med totala skott",
+    metricPenalties: "Straffar",
+    metricPenaltiesCaption: "Registrerade 7 m-försök",
     metricPenaltyGoals: "Straffmål",
-    metricPenaltyGoalsCaption: "Mål märkta som straffar",
+    metricPenaltyGoalsCaption: "Mål på 7 m",
+    metricPenaltyMisses: "Straffmiss",
+    metricPenaltyMissesCaption: "Missade eller räddade 7 m",
+    metricPenaltyEfficiency: "Straffeffektivitet",
+    metricPenaltyEfficiencyCaption: "Straffmål dividerat med antal straffar",
+    metricTechFaults: "Tekniska fel",
+    metricTechFaultsCaption: "Bolltapp och tekniska fel",
+    metricSuspensions: "Utvisningar",
+    metricSuspensionsCaption: "Tvåminutersutvisningar",
     metricWarnings: "Varningar",
-    metricWarningsCaption: "Kort mappas till varningshändelser",
+    metricWarningsCaption: "Gula kort",
     summaryMode: "LÄGE",
     summaryPlayer: "SPELARE",
     summaryAction: "HÄNDELSE",
@@ -675,25 +715,65 @@ function renderSummary() {
 
 function renderMetrics() {
   const summary = calculateSummary(state.events);
-  const cards = [
-    { label: t("metricGoals"), value: summary.goals, caption: t("metricGoalsCaption") },
-    { label: t("metricShotsOnGoal"), value: summary.shotsOnGoal, caption: t("metricShotsOnGoalCaption") },
-    { label: t("metricShotEfficiency"), value: `${summary.shotEfficiency}%`, caption: t("metricShotEfficiencyCaption") },
-    { label: t("metricKeeperSaves"), value: summary.keeperSaves, caption: t("metricKeeperSavesCaption") },
-    { label: t("metricPenaltyGoals"), value: summary.penaltyGoals, caption: t("metricPenaltyGoalsCaption") },
-    { label: t("metricWarnings"), value: summary.warnings, caption: t("metricWarningsCaption") },
+  const groups = [
+    {
+      title: t("metricGroupShooting"),
+      cards: [
+        { label: t("metricTotalShots"), value: summary.totalShots, caption: t("metricTotalShotsCaption") },
+        { label: t("metricGoals"), value: summary.goals, caption: t("metricGoalsCaption") },
+        { label: t("metricMisses"), value: summary.misses, caption: t("metricMissesCaption") },
+        { label: t("metricShotEfficiency"), value: `${summary.shotEfficiency}%`, caption: t("metricShotEfficiencyCaption") },
+      ],
+    },
+    {
+      title: t("metricGroupGoalkeeping"),
+      cards: [
+        { label: t("metricShotsOnGoal"), value: summary.shotsOnGoal, caption: t("metricShotsOnGoalCaption") },
+        { label: t("metricSaves"), value: summary.saves, caption: t("metricSavesCaption") },
+        { label: t("metricSavePercentage"), value: `${summary.savePercentage}%`, caption: t("metricSavePercentageCaption") },
+      ],
+    },
+    {
+      title: t("metricGroupPenalties"),
+      cards: [
+        { label: t("metricPenalties"), value: summary.penalties, caption: t("metricPenaltiesCaption") },
+        { label: t("metricPenaltyGoals"), value: summary.penaltyGoals, caption: t("metricPenaltyGoalsCaption") },
+        { label: t("metricPenaltyMisses"), value: summary.penaltyMisses, caption: t("metricPenaltyMissesCaption") },
+        { label: t("metricPenaltyEfficiency"), value: `${summary.penaltyEfficiency}%`, caption: t("metricPenaltyEfficiencyCaption") },
+      ],
+    },
+    {
+      title: t("metricGroupDiscipline"),
+      cards: [
+        { label: t("metricTechFaults"), value: summary.techFaults, caption: t("metricTechFaultsCaption") },
+        { label: t("metricSuspensions"), value: summary.suspensions, caption: t("metricSuspensionsCaption") },
+        { label: t("metricWarnings"), value: summary.warnings, caption: t("metricWarningsCaption") },
+      ],
+    },
   ];
 
   metricsGrid.innerHTML = "";
-  cards.forEach((card) => {
-    const node = document.createElement("article");
-    node.className = "metric-card";
-    node.innerHTML = `
-      <span class="stat-label">${card.label}</span>
-      <strong class="metric-value">${card.value}</strong>
-      <p class="metric-caption">${card.caption}</p>
-    `;
-    metricsGrid.appendChild(node);
+  groups.forEach((group) => {
+    const section = document.createElement("section");
+    section.className = "metric-group";
+    section.innerHTML = `<h3 class="metric-group-title">${group.title}</h3>`;
+
+    const cardGrid = document.createElement("div");
+    cardGrid.className = "metric-group-grid";
+
+    group.cards.forEach((card) => {
+      const node = document.createElement("article");
+      node.className = "metric-card";
+      node.innerHTML = `
+        <span class="stat-label">${card.label}</span>
+        <strong class="metric-value">${card.value}</strong>
+        <p class="metric-caption">${card.caption}</p>
+      `;
+      cardGrid.appendChild(node);
+    });
+
+    section.appendChild(cardGrid);
+    metricsGrid.appendChild(section);
   });
 }
 
@@ -1366,20 +1446,33 @@ function buildBaseDimensions(context, actionId) {
 function calculateSummary(events) {
   const totalShots = events.filter((event) => event.statType === "SHOT").length;
   const goals = events.filter((event) => event.statType === "GOAL").length;
+  const misses = events.filter((event) => event.statType === "SHOT_OFF").length;
   const shotsOnGoal = events.filter((event) => event.statType === "SHOT_ON_GOAL").length;
-  const keeperSaves = events.filter((event) => event.statType.startsWith("SAVE")).length;
+  const saves = events.filter((event) => event.statType === "SAVE").length;
   const warnings = events.filter((event) => event.statType === "WARNING").length;
+  const techFaults = events.filter((event) => event.statType === "TECH_FAULT").length;
+  const suspensions = events.filter((event) => event.statType === "SUSPENSION_2").length;
+  const penalties = events.filter((event) => event.statType === "PENALTY_SHOT").length;
   const penaltyGoals = events.filter(
     (event) => event.statType === "GOAL" && event.dimensions.attack_type === "penalty",
   ).length;
+  const penaltyMisses = Math.max(0, penalties - penaltyGoals);
 
   return {
+    totalShots,
     goals,
+    misses,
     shotsOnGoal,
-    keeperSaves,
+    saves,
     warnings,
+    techFaults,
+    suspensions,
+    penalties,
     penaltyGoals,
+    penaltyMisses,
     shotEfficiency: totalShots ? Math.round((goals / totalShots) * 100) : 0,
+    savePercentage: shotsOnGoal ? Math.round((saves / shotsOnGoal) * 100) : 0,
+    penaltyEfficiency: penalties ? Math.round((penaltyGoals / penalties) * 100) : 0,
   };
 }
 

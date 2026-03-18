@@ -430,8 +430,28 @@ button {
 }
 
 .metrics-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
+  gap: 18px;
   margin-bottom: 18px;
+}
+
+.metric-group {
+  display: grid;
+  gap: 10px;
+}
+
+.metric-group-title {
+  margin: 0;
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.metric-group-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .metric-card {
@@ -681,6 +701,10 @@ button {
 
   .hero-stats,
   .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-group-grid {
     grid-template-columns: 1fr;
   }
 
