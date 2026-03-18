@@ -558,6 +558,58 @@ button {
   white-space: pre-wrap;
 }
 
+.player-stats-dialog {
+  width: min(1280px, calc(100vw - 48px));
+}
+
+.player-stats-panel {
+  gap: 16px;
+}
+
+.player-stats-table-host {
+  overflow: auto;
+}
+
+.player-stats-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.player-stats-table th,
+.player-stats-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.player-stats-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-strong);
+}
+
+.player-stats-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.table-sort {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-sort.is-active {
+  color: var(--accent-strong);
+}
+
 .settings-card {
   padding: 14px 16px;
   border-radius: var(--radius-md);

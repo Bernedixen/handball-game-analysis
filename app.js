@@ -42,6 +42,26 @@ const translations = {
     importCopy: "Upload a Profixio timeline PDF and import the selected side into the app.",
     openImport: "Open import dialog",
     closeImport: "Close import dialog",
+    openPlayerStats: "Open player stats",
+    closePlayerStats: "Close player stats",
+    playerStatsTitle: "Player stats",
+    playerStatsCopy: "View sortable live stats per player.",
+    playerStatsEmpty: "No player stats available yet.",
+    playerStatsPlayer: "Player",
+    playerStatsShots: "Shots",
+    playerStatsGoals: "Goals",
+    playerStatsMisses: "Misses",
+    playerStatsEfficiency: "Eff %",
+    playerStatsShotsOnGoal: "On goal",
+    playerStatsSaves: "Saves",
+    playerStatsSavePercentage: "Save %",
+    playerStatsPenalties: "Pens",
+    playerStatsPenaltyGoals: "Pen goals",
+    playerStatsPenaltyMisses: "Pen miss",
+    playerStatsPenaltyEfficiency: "Pen %",
+    playerStatsTechFaults: "Tech",
+    playerStatsSuspensions: "Susp",
+    playerStatsWarnings: "Warn",
     importPdfLabel: "Imported PDF",
     importPdfNote: "Upload a Profixio timeline PDF and choose which side to import.",
     importTeamLabel: "Team side",
@@ -192,6 +212,26 @@ const translations = {
     importCopy: "Ladda upp en Profixio-tidslinje som PDF och importera vald sida i appen.",
     openImport: "Öppna importdialog",
     closeImport: "Stäng importdialog",
+    openPlayerStats: "Öppna spelarstatistik",
+    closePlayerStats: "Stäng spelarstatistik",
+    playerStatsTitle: "Spelarstatistik",
+    playerStatsCopy: "Visa sorterbar live-statistik per spelare.",
+    playerStatsEmpty: "Ingen spelarstatistik tillgänglig ännu.",
+    playerStatsPlayer: "Spelare",
+    playerStatsShots: "Skott",
+    playerStatsGoals: "Mål",
+    playerStatsMisses: "Missar",
+    playerStatsEfficiency: "Eff %",
+    playerStatsShotsOnGoal: "På mål",
+    playerStatsSaves: "Räddn",
+    playerStatsSavePercentage: "Rädd %",
+    playerStatsPenalties: "Straff",
+    playerStatsPenaltyGoals: "Str mål",
+    playerStatsPenaltyMisses: "Str miss",
+    playerStatsPenaltyEfficiency: "Str %",
+    playerStatsTechFaults: "Tek",
+    playerStatsSuspensions: "Utv",
+    playerStatsWarnings: "Var",
     importPdfLabel: "Importerad PDF",
     importPdfNote: "Ladda upp en Profixio-tidslinje som PDF och välj vilken sida som ska importeras.",
     importTeamLabel: "Lagsida",
@@ -408,6 +448,7 @@ const state = {
   plays: [],
   events: [],
   importStatus: null,
+  playerStatsSort: { key: "goals", direction: "desc" },
 };
 
 const actionGrid = document.querySelector("#action-grid");
@@ -431,6 +472,10 @@ const settingsPanel = document.querySelector("#settings-panel");
 const toggleImportButton = document.querySelector("#toggle-import");
 const closeImportButton = document.querySelector("#close-import");
 const importDialog = document.querySelector("#import-dialog");
+const togglePlayerStatsButton = document.querySelector("#toggle-player-stats");
+const closePlayerStatsButton = document.querySelector("#close-player-stats");
+const playerStatsDialog = document.querySelector("#player-stats-dialog");
+const playerStatsTableHost = document.querySelector("#player-stats-table-host");
 const importFile = document.querySelector("#import-file");
 const importTeamSide = document.querySelector("#import-team-side");
 const importPdfButton = document.querySelector("#import-pdf");
@@ -451,12 +496,16 @@ toggleSettingsButton.addEventListener("click", openSettingsDialog);
 closeSettingsButton.addEventListener("click", closeSettingsDialog);
 toggleImportButton.addEventListener("click", openImportDialog);
 closeImportButton.addEventListener("click", closeImportDialog);
+togglePlayerStatsButton.addEventListener("click", openPlayerStatsDialog);
+closePlayerStatsButton.addEventListener("click", closePlayerStatsDialog);
 backStepButton.addEventListener("click", goToPreviousStage);
 nextStepButton.addEventListener("click", goToNextStage);
 settingsDialog.addEventListener("close", renderSettingsButtonState);
 settingsDialog.addEventListener("click", handleDialogBackdropClick);
 importDialog.addEventListener("close", renderImportButtonState);
 importDialog.addEventListener("click", handleDialogBackdropClick);
+playerStatsDialog.addEventListener("close", renderPlayerStatsButtonState);
+playerStatsDialog.addEventListener("click", handleDialogBackdropClick);
 importPdfButton.addEventListener("click", () => importProfixioPdf("replace"));
 langEnButton.addEventListener("click", () => setLanguage("en-US"));
 langSvButton.addEventListener("click", () => setLanguage("sv-SE"));
@@ -471,8 +520,10 @@ function render() {
   renderMetrics();
   renderSettingsButtonState();
   renderImportButtonState();
+  renderPlayerStatsButtonState();
   renderSettings();
   renderImportStatus();
+  renderPlayerStatsTable();
   renderPlayLog();
   renderEventLog();
   playCount.textContent = String(state.plays.length);
@@ -503,9 +554,14 @@ function renderChromeText() {
   document.querySelector("#close-settings").setAttribute("aria-label", t("closeSettings"));
   document.querySelector("#toggle-import").textContent = t("importPdfButton");
   document.querySelector("#toggle-import").setAttribute("aria-label", t("openImport"));
+  document.querySelector("#toggle-player-stats").textContent = t("playerStatsTitle");
+  document.querySelector("#toggle-player-stats").setAttribute("aria-label", t("openPlayerStats"));
   document.querySelector("#import-title").textContent = t("importTitle");
   document.querySelector("#import-copy").textContent = t("importCopy");
   document.querySelector("#close-import").setAttribute("aria-label", t("closeImport"));
+  document.querySelector("#player-stats-title").textContent = t("playerStatsTitle");
+  document.querySelector("#player-stats-copy").textContent = t("playerStatsCopy");
+  document.querySelector("#close-player-stats").setAttribute("aria-label", t("closePlayerStats"));
   document.querySelector("#import-file-label").textContent = t("importPdfLabel");
   document.querySelector("#import-file-note").textContent = t("importPdfNote");
   document.querySelector("#import-team-label").textContent = t("importTeamLabel");
@@ -777,6 +833,138 @@ function renderMetrics() {
   });
 }
 
+function getPlayerStatsColumns() {
+  return [
+    { key: "player", label: t("playerStatsPlayer") },
+    { key: "shots", label: t("playerStatsShots") },
+    { key: "goals", label: t("playerStatsGoals") },
+    { key: "misses", label: t("playerStatsMisses") },
+    { key: "efficiency", label: t("playerStatsEfficiency"), format: (value) => `${value}%` },
+    { key: "shotsOnGoal", label: t("playerStatsShotsOnGoal") },
+    { key: "saves", label: t("playerStatsSaves") },
+    { key: "savePercentage", label: t("playerStatsSavePercentage"), format: (value) => `${value}%` },
+    { key: "penalties", label: t("playerStatsPenalties") },
+    { key: "penaltyGoals", label: t("playerStatsPenaltyGoals") },
+    { key: "penaltyMisses", label: t("playerStatsPenaltyMisses") },
+    { key: "penaltyEfficiency", label: t("playerStatsPenaltyEfficiency"), format: (value) => `${value}%` },
+    { key: "techFaults", label: t("playerStatsTechFaults") },
+    { key: "suspensions", label: t("playerStatsSuspensions") },
+    { key: "warnings", label: t("playerStatsWarnings") },
+  ];
+}
+
+function buildPlayerStatsRows(events) {
+  const rowsByPlayer = new Map();
+  const playerNameById = new Map(players.map((player) => [player.id, `#${player.number} ${player.name}`]));
+
+  events.forEach((event) => {
+    const label = playerNameById.get(event.playerId)
+      ?? findPlayerLabelForEvent(event)
+      ?? event.playerLabel;
+    if (!label || label === "Goalkeeper") {
+      return;
+    }
+
+    const row = rowsByPlayer.get(label) ?? {
+      player: label,
+      shots: 0,
+      goals: 0,
+      misses: 0,
+      efficiency: 0,
+      shotsOnGoal: 0,
+      saves: 0,
+      savePercentage: 0,
+      penalties: 0,
+      penaltyGoals: 0,
+      penaltyMisses: 0,
+      penaltyEfficiency: 0,
+      techFaults: 0,
+      suspensions: 0,
+      warnings: 0,
+    };
+
+    if (event.statType === "SHOT") {
+      row.shots += 1;
+    }
+    if (event.statType === "GOAL") {
+      row.goals += 1;
+      if (event.dimensions.attack_type === "penalty") {
+        row.penaltyGoals += 1;
+      }
+    }
+    if (event.statType === "SHOT_OFF") {
+      row.misses += 1;
+      if (event.dimensions.attack_type === "penalty") {
+        row.penaltyMisses += 1;
+      }
+    }
+    if (event.statType === "SHOT_ON_GOAL") {
+      row.shotsOnGoal += 1;
+    }
+    if (event.statType === "SAVE") {
+      row.saves += 1;
+    }
+    if (event.statType === "PENALTY_SHOT") {
+      row.penalties += 1;
+    }
+    if (event.statType === "TECH_FAULT") {
+      row.techFaults += 1;
+    }
+    if (event.statType === "SUSPENSION_2") {
+      row.suspensions += 1;
+    }
+    if (event.statType === "WARNING") {
+      row.warnings += 1;
+    }
+
+    rowsByPlayer.set(label, row);
+  });
+
+  return [...rowsByPlayer.values()]
+    .map((row) => ({
+      ...row,
+      efficiency: row.shots ? Math.round((row.goals / row.shots) * 100) : 0,
+      savePercentage: row.shotsOnGoal ? Math.round((row.saves / row.shotsOnGoal) * 100) : 0,
+      penaltyEfficiency: row.penalties ? Math.round((row.penaltyGoals / row.penalties) * 100) : 0,
+    }));
+}
+
+function findPlayerLabelForEvent(event) {
+  const player = players.find((entry) => entry.id === event.playerId);
+  if (player) {
+    return `#${player.number} ${player.name}`;
+  }
+
+  const byName = players.find((entry) => entry.name === event.playerLabel);
+  return byName ? `#${byName.number} ${byName.name}` : event.playerLabel;
+}
+
+function sortPlayerStatsRows(rows, sort) {
+  const direction = sort.direction === "asc" ? 1 : -1;
+  return rows.slice().sort((left, right) => {
+    const leftValue = left[sort.key];
+    const rightValue = right[sort.key];
+
+    if (typeof leftValue === "number" && typeof rightValue === "number" && leftValue !== rightValue) {
+      return (leftValue - rightValue) * direction;
+    }
+
+    const textCompare = String(leftValue).localeCompare(String(rightValue), "sv", { numeric: true, sensitivity: "base" });
+    if (textCompare !== 0) {
+      return textCompare * direction;
+    }
+
+    return left.player.localeCompare(right.player, "sv", { numeric: true, sensitivity: "base" });
+  });
+}
+
+function togglePlayerStatsSort(key) {
+  state.playerStatsSort = state.playerStatsSort.key === key
+    ? { key, direction: state.playerStatsSort.direction === "asc" ? "desc" : "asc" }
+    : { key, direction: key === "player" ? "asc" : "desc" };
+  renderPlayerStatsTable();
+}
+
 function renderSettings() {
   settingsPanel.innerHTML = "";
 
@@ -915,6 +1103,12 @@ function renderImportButtonState() {
   toggleImportButton.classList.toggle("is-active", isOpen);
 }
 
+function renderPlayerStatsButtonState() {
+  const isOpen = playerStatsDialog.open;
+  togglePlayerStatsButton.setAttribute("aria-expanded", String(isOpen));
+  togglePlayerStatsButton.classList.toggle("is-active", isOpen);
+}
+
 function renderImportStatus() {
   if (!state.importStatus) {
     importStatus.className = "import-status empty-state";
@@ -924,6 +1118,57 @@ function renderImportStatus() {
 
   importStatus.className = "import-status context-group";
   importStatus.textContent = state.importStatus;
+}
+
+function renderPlayerStatsTable() {
+  const rows = buildPlayerStatsRows(state.events);
+  if (!rows.length) {
+    playerStatsTableHost.className = "player-stats-table-host empty-state";
+    playerStatsTableHost.textContent = t("playerStatsEmpty");
+    return;
+  }
+
+  const columns = getPlayerStatsColumns();
+  const sortedRows = sortPlayerStatsRows(rows, state.playerStatsSort);
+  playerStatsTableHost.className = "player-stats-table-host";
+  playerStatsTableHost.innerHTML = "";
+
+  const table = document.createElement("table");
+  table.className = "player-stats-table";
+
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  columns.forEach((column) => {
+    const th = document.createElement("th");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `table-sort ${state.playerStatsSort.key === column.key ? "is-active" : ""}`.trim();
+    const direction = state.playerStatsSort.key === column.key && state.playerStatsSort.direction === "asc" ? "asc" : "desc";
+    const indicator = state.playerStatsSort.key === column.key ? (state.playerStatsSort.direction === "asc" ? " ↑" : " ↓") : "";
+    button.textContent = `${column.label}${indicator}`;
+    button.setAttribute("aria-sort", state.playerStatsSort.key === column.key ? direction : "none");
+    button.addEventListener("click", () => {
+      togglePlayerStatsSort(column.key);
+    });
+    th.appendChild(button);
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+
+  const tbody = document.createElement("tbody");
+  sortedRows.forEach((row) => {
+    const tr = document.createElement("tr");
+    columns.forEach((column) => {
+      const td = document.createElement("td");
+      td.textContent = String(column.format ? column.format(row[column.key]) : row[column.key]);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  playerStatsTableHost.appendChild(table);
 }
 
 function renderPlayLog() {
@@ -1227,6 +1472,20 @@ function closeImportDialog() {
     importDialog.close();
   }
   renderImportButtonState();
+}
+
+function openPlayerStatsDialog() {
+  if (!playerStatsDialog.open) {
+    playerStatsDialog.showModal();
+  }
+  renderPlayerStatsButtonState();
+}
+
+function closePlayerStatsDialog() {
+  if (playerStatsDialog.open) {
+    playerStatsDialog.close();
+  }
+  renderPlayerStatsButtonState();
 }
 
 function handleDialogBackdropClick(event) {
