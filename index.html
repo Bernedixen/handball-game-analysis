@@ -88,6 +88,7 @@
             <button id="toggle-settings" class="icon-button" type="button" aria-haspopup="dialog" aria-controls="settings-dialog" aria-label="Open settings">
               <span class="icon-button-glyph" aria-hidden="true">⚙</span>
             </button>
+            <button id="toggle-import" class="ghost-button" type="button" aria-haspopup="dialog" aria-controls="import-dialog">Import JSON</button>
             <button id="seed-demo" class="ghost-button" type="button">Add demo sequence</button>
           </div>
         </div>
@@ -128,6 +129,36 @@
       </button>
     </div>
     <div id="settings-panel" class="settings-panel"></div>
+  </dialog>
+
+  <dialog id="import-dialog" class="settings-dialog">
+    <div class="settings-dialog-header">
+      <div>
+        <h3 id="import-title">Import Profixio timeline</h3>
+        <p id="import-copy">Paste JSON from the local Profixio import helper to load timeline events into the app.</p>
+      </div>
+      <button id="close-import" class="icon-button" type="button" aria-label="Close import dialog">
+        <span class="icon-button-glyph" aria-hidden="true">×</span>
+      </button>
+    </div>
+    <div class="settings-panel import-panel">
+      <label class="context-group import-group" for="import-file">
+        <p id="import-file-label" class="context-group-label">Imported PDF</p>
+        <p id="import-file-note" class="stage-copy">Upload a Profixio timeline PDF and choose which side to import.</p>
+        <input id="import-file" class="import-file" type="file" accept=".pdf,application/pdf">
+      </label>
+      <div class="import-side-row">
+        <label class="context-group import-group" for="import-team-side">
+          <p id="import-team-label" class="context-group-label">Team side</p>
+          <select id="import-team-side" class="import-select">
+            <option value="home">Home team</option>
+            <option value="away">Away team</option>
+          </select>
+        </label>
+        <button id="import-pdf" class="primary-button" type="button">Import PDF</button>
+      </div>
+      <div id="import-status" class="import-status empty-state">No import loaded.</div>
+    </div>
   </dialog>
 
   <script src="app.js"></script>

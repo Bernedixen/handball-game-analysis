@@ -24,3 +24,23 @@ This repo is configured for Render Static Site deployment with [render.yaml](/c:
 - Static frontend only
 - No backend or database yet
 - Match data is in-memory in the browser session
+
+## Profixio import helper
+
+This repo now includes a local CLI helper for Profixio timeline imports:
+
+```bash
+node scripts/profixio-import.mjs list --team-id 1399914 --team-url https://www.profixio.com/app/leagueid17808/teams/1399914
+node scripts/profixio-import.mjs timeline --team-id 1399914 --match-id 32357739 --team-url https://www.profixio.com/app/leagueid17808/teams/1399914
+```
+
+What it does:
+
+- Lists matches for a Profixio team page and marks which ones are played
+- Opens a selected `expandmatch` view
+- Extracts the signed EMP API URL from the page
+- Returns a minimal per-team timeline JSON with fields such as event id, action, player, clock, score, and comment
+
+Important constraint:
+
+- This is a local script, not an in-browser importer. The current app is static, while Profixio timeline data is exposed through a signed URL discovered from the expanded match page. That is practical from a local script, but not a robust direct browser import path for this repo as-is.

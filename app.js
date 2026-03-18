@@ -1,8 +1,10 @@
-const players = Array.from({ length: 16 }, (_, index) => ({
+const defaultPlayers = Array.from({ length: 16 }, (_, index) => ({
   id: `p${index + 1}`,
   number: index + 1,
   name: `Player ${index + 1}`,
 }));
+
+let players = [...defaultPlayers];
 
 const translations = {
   "en-US": {
@@ -36,6 +38,27 @@ const translations = {
     settingsCopy: "Choose which context steps should appear for each action.",
     openSettings: "Open settings",
     closeSettings: "Close settings",
+    importTitle: "Import Profixio timeline",
+    importCopy: "Upload a Profixio timeline PDF and import the selected side into the app.",
+    openImport: "Open import dialog",
+    closeImport: "Close import dialog",
+    importPdfLabel: "Imported PDF",
+    importPdfNote: "Upload a Profixio timeline PDF and choose which side to import.",
+    importTeamLabel: "Team side",
+    importTeamHome: "Home team",
+    importTeamAway: "Away team",
+    importPdfButton: "Import PDF",
+    importEmpty: "No import loaded.",
+    importSuccess: "Imported {plays} plays and {events} events from {match}.",
+    importErrorPrefix: "Import error: {message}",
+    importPdfNoFile: "Choose a PDF file first.",
+    importPdfUnsupported: "This browser does not support local PDF decompression for import.",
+    importPdfTeamsNotFound: "Could not identify home and away teams from the PDF.",
+    importPdfNoRows: "No timeline rows found for {team}.",
+    importPdfCandidates: "Found title rows:\n{rows}",
+    importPdfParsedRows: "Parsed timeline rows:\n{rows}",
+    importPdfDebug: "PDF debug:\n{debug}",
+    importPdfSuccessDebug: "Imported {plays} plays and {events} events from {match}.\n\nPDF debug:\n{debug}",
     modeEditing: "Editing existing play",
     modeCreating: "Creating new play",
     notSelected: "Not selected",
@@ -145,6 +168,27 @@ const translations = {
     settingsCopy: "Välj vilka kontextsteg som ska visas för varje händelse.",
     openSettings: "Öppna inställningar",
     closeSettings: "Stäng inställningar",
+    importTitle: "Importera Profixio-tidslinje",
+    importCopy: "Ladda upp en Profixio-tidslinje som PDF och importera vald sida i appen.",
+    openImport: "Öppna importdialog",
+    closeImport: "Stäng importdialog",
+    importPdfLabel: "Importerad PDF",
+    importPdfNote: "Ladda upp en Profixio-tidslinje som PDF och välj vilken sida som ska importeras.",
+    importTeamLabel: "Lagsida",
+    importTeamHome: "Hemmalag",
+    importTeamAway: "Bortalag",
+    importPdfButton: "Importera PDF",
+    importEmpty: "Ingen import inläst.",
+    importSuccess: "Importerade {plays} spel och {events} händelser från {match}.",
+    importErrorPrefix: "Importfel: {message}",
+    importPdfNoFile: "Välj en PDF-fil först.",
+    importPdfUnsupported: "Den här webbläsaren stöder inte lokal PDF-dekomprimering för import.",
+    importPdfTeamsNotFound: "Kunde inte identifiera hemma- och bortalag i PDF-filen.",
+    importPdfNoRows: "Hittade inga tidslinjerader för {team}.",
+    importPdfCandidates: "Hittade titelrader:\n{rows}",
+    importPdfParsedRows: "Parsade tidslinjerader:\n{rows}",
+    importPdfDebug: "PDF-debug:\n{debug}",
+    importPdfSuccessDebug: "Importerade {plays} spel och {events} händelser från {match}.\n\nPDF-debug:\n{debug}",
     modeEditing: "Redigerar befintligt spel",
     modeCreating: "Skapar nytt spel",
     notSelected: "Inte vald",
@@ -257,7 +301,7 @@ const contextDefinitions = {
   ],
   PENALTY: [
     { key: "height", label: "Height", options: ["HIGH", "LOW"] },
-    { key: "outcome", label: "Outcome", options: ["GOAL", "SAVE", "MISS", "BLOCK"] },
+    { key: "outcome", label: "Outcome", options: ["GOAL", "SAVE", "MISS"] },
   ],
   SAVE: [
     { key: "height", label: "Shot height", options: ["HIGH", "LOW"] },
@@ -323,6 +367,7 @@ const state = {
   contextSettings,
   plays: [],
   events: [],
+  importStatus: null,
 };
 
 const actionGrid = document.querySelector("#action-grid");
@@ -343,6 +388,13 @@ const toggleSettingsButton = document.querySelector("#toggle-settings");
 const closeSettingsButton = document.querySelector("#close-settings");
 const settingsDialog = document.querySelector("#settings-dialog");
 const settingsPanel = document.querySelector("#settings-panel");
+const toggleImportButton = document.querySelector("#toggle-import");
+const closeImportButton = document.querySelector("#close-import");
+const importDialog = document.querySelector("#import-dialog");
+const importFile = document.querySelector("#import-file");
+const importTeamSide = document.querySelector("#import-team-side");
+const importPdfButton = document.querySelector("#import-pdf");
+const importStatus = document.querySelector("#import-status");
 const playCount = document.querySelector("#play-count");
 const eventCount = document.querySelector("#event-count");
 const metricsGrid = document.querySelector("#metrics-grid");
@@ -357,10 +409,15 @@ document.querySelector("#commit-play").addEventListener("click", commitPlay);
 document.querySelector("#seed-demo").addEventListener("click", seedDemoSequence);
 toggleSettingsButton.addEventListener("click", openSettingsDialog);
 closeSettingsButton.addEventListener("click", closeSettingsDialog);
+toggleImportButton.addEventListener("click", openImportDialog);
+closeImportButton.addEventListener("click", closeImportDialog);
 backStepButton.addEventListener("click", goToPreviousStage);
 nextStepButton.addEventListener("click", goToNextStage);
 settingsDialog.addEventListener("close", renderSettingsButtonState);
 settingsDialog.addEventListener("click", handleDialogBackdropClick);
+importDialog.addEventListener("close", renderImportButtonState);
+importDialog.addEventListener("click", handleDialogBackdropClick);
+importPdfButton.addEventListener("click", () => importProfixioPdf("replace"));
 langEnButton.addEventListener("click", () => setLanguage("en-US"));
 langSvButton.addEventListener("click", () => setLanguage("sv-SE"));
 
@@ -369,11 +426,13 @@ render();
 function render() {
   renderChromeText();
   renderActions();
-  normalizeFlowState();
+  normalizeFlowState({ advanceCompleted: false });
   renderFlow();
   renderMetrics();
   renderSettingsButtonState();
+  renderImportButtonState();
   renderSettings();
+  renderImportStatus();
   renderPlayLog();
   renderEventLog();
   playCount.textContent = String(state.plays.length);
@@ -402,6 +461,17 @@ function renderChromeText() {
   document.querySelector("#settings-copy").textContent = t("settingsCopy");
   document.querySelector("#toggle-settings").setAttribute("aria-label", t("openSettings"));
   document.querySelector("#close-settings").setAttribute("aria-label", t("closeSettings"));
+  document.querySelector("#toggle-import").textContent = t("importPdfButton");
+  document.querySelector("#toggle-import").setAttribute("aria-label", t("openImport"));
+  document.querySelector("#import-title").textContent = t("importTitle");
+  document.querySelector("#import-copy").textContent = t("importCopy");
+  document.querySelector("#close-import").setAttribute("aria-label", t("closeImport"));
+  document.querySelector("#import-file-label").textContent = t("importPdfLabel");
+  document.querySelector("#import-file-note").textContent = t("importPdfNote");
+  document.querySelector("#import-team-label").textContent = t("importTeamLabel");
+  importTeamSide.options[0].textContent = t("importTeamHome");
+  importTeamSide.options[1].textContent = t("importTeamAway");
+  importPdfButton.textContent = t("importPdfButton");
   backStepButton.textContent = t("back");
   nextStepButton.textContent = t("next");
   langEnButton.classList.toggle("is-active", state.language === "en-US");
@@ -480,8 +550,23 @@ function renderFlow() {
   commitButton.textContent = state.editingPlayId ? t("saveChanges") : t("recordPlay");
 }
 
-function handleFlowInputChange() {
-  normalizeFlowState();
+function handleFlowInputChange(changedStageIndex = state.currentStageIndex) {
+  pruneConditionalContext();
+
+  const stages = getFlowStages();
+  if (!stages.length) {
+    render();
+    return;
+  }
+
+  const lastIndex = Math.max(0, stages.length - 1);
+  if (changedStageIndex < lastIndex) {
+    state.currentStageIndex = Math.min(changedStageIndex + 1, lastIndex);
+    render();
+    return;
+  }
+
+  normalizeFlowState({ advanceCompleted: true });
 
   if (state.autoRecordLastDetail && isFlowComplete()) {
     commitPlay();
@@ -541,7 +626,7 @@ function renderStage(stage) {
       button.innerHTML = `#${player.number}<small>${player.name}</small>`;
       button.addEventListener("click", () => {
         state.selectedPlayerId = player.id;
-        handleFlowInputChange();
+        handleFlowInputChange(state.currentStageIndex);
       });
       options.appendChild(button);
     });
@@ -557,7 +642,7 @@ function renderStage(stage) {
         if (stage.key === "outcome" && option !== "GOAL") {
           delete state.context.assistPlayerId;
         }
-        handleFlowInputChange();
+        handleFlowInputChange(state.currentStageIndex);
       });
       options.appendChild(button);
     });
@@ -744,6 +829,23 @@ function renderSettingsButtonState() {
   toggleSettingsButton.classList.toggle("is-active", isOpen);
 }
 
+function renderImportButtonState() {
+  const isOpen = importDialog.open;
+  toggleImportButton.setAttribute("aria-expanded", String(isOpen));
+  toggleImportButton.classList.toggle("is-active", isOpen);
+}
+
+function renderImportStatus() {
+  if (!state.importStatus) {
+    importStatus.className = "import-status empty-state";
+    importStatus.textContent = t("importEmpty");
+    return;
+  }
+
+  importStatus.className = "import-status context-group";
+  importStatus.textContent = state.importStatus;
+}
+
 function renderPlayLog() {
   if (!state.plays.length) {
     playLog.className = "log-list empty-state";
@@ -761,17 +863,18 @@ function renderPlayLog() {
     const item = document.createElement("article");
     item.className = "log-item";
     const isEditing = state.editingPlayId === play.id;
+    const canEdit = play.editable !== false;
     item.innerHTML = `
       <p class="log-item-title">${formatPlayLabel(play.actionId, buildPlayTitle(play))}</p>
       <p class="log-item-subtitle">${play.timeLabel} • ${buildPlaySource(play)}</p>
       <div class="token-row">${play.contextTokens.map((token) => `<span class="token">${token}</span>`).join("")}</div>
       <div class="action-row">
-        <button class="ghost-button log-action" type="button" data-action="edit">${isEditing ? t("editing") : t("edit")}</button>
+        ${canEdit ? `<button class="ghost-button log-action" type="button" data-action="edit">${isEditing ? t("editing") : t("edit")}</button>` : ""}
         <button class="ghost-button log-action log-action-danger" type="button" data-action="delete">${t("delete")}</button>
       </div>
     `;
 
-    item.querySelector('[data-action="edit"]').addEventListener("click", () => {
+    item.querySelector('[data-action="edit"]')?.addEventListener("click", () => {
       loadPlayIntoEditor(play.id);
     });
     item.querySelector('[data-action="delete"]').addEventListener("click", () => {
@@ -816,6 +919,7 @@ function commitPlay() {
   const existingPlay = state.editingPlayId
     ? state.plays.find((play) => play.id === state.editingPlayId) ?? null
     : null;
+  const preserveImportedMetadata = Boolean(existingPlay?.imported && existingPlay.actionId === actionId);
   const playId = existingPlay?.id ?? crypto.randomUUID();
   const timestamp = existingPlay ? new Date(existingPlay.time) : new Date();
   const derivedEvents = deriveEvents({
@@ -828,15 +932,16 @@ function commitPlay() {
 
   const play = {
     id: playId,
-    gameId: "demo-game",
+    gameId: existingPlay?.gameId ?? "demo-game",
     time: timestamp.toISOString(),
-    timeLabel: formatTime(timestamp),
+    timeLabel: existingPlay?.timeLabel ?? formatTime(timestamp),
     playerId: player.id,
     actionId,
     context: { ...state.context },
-    sourceText: `${player.name} -> ${actionId}`,
-    label: `${player.name} ${actionId.replace("_", " ")}`,
-    contextTokens: Object.entries(state.context).map(([key, value]) => `${key}:${formatContextOption(key, value)}`),
+    sourceText: preserveImportedMetadata ? existingPlay.sourceText : `${player.name} -> ${actionId}`,
+    label: preserveImportedMetadata ? existingPlay.label : `${player.name} ${actionId.replace("_", " ")}`,
+    contextTokens: buildPlayContextTokens({ existingPlay, context: state.context, preserveImportedMetadata }),
+    imported: preserveImportedMetadata,
   };
 
   if (existingPlay) {
@@ -913,7 +1018,7 @@ function getCurrentStage() {
   return stages[Math.min(state.currentStageIndex, stages.length - 1)];
 }
 
-function normalizeFlowState() {
+function normalizeFlowState({ advanceCompleted = false } = {}) {
   if (!state.selectedActionId) {
     return;
   }
@@ -927,6 +1032,10 @@ function normalizeFlowState() {
   }
 
   state.currentStageIndex = Math.min(state.currentStageIndex, stages.length - 1);
+
+  if (!advanceCompleted) {
+    return;
+  }
 
   for (let index = state.currentStageIndex; index < stages.length; index += 1) {
     const stage = stages[index];
@@ -1008,7 +1117,7 @@ function applySettingsPreset(presetName) {
   }
 
   pruneConditionalContext();
-  normalizeFlowState();
+  normalizeFlowState({ advanceCompleted: true });
   render();
 }
 
@@ -1026,8 +1135,23 @@ function closeSettingsDialog() {
   renderSettingsButtonState();
 }
 
+function openImportDialog() {
+  if (!importDialog.open) {
+    importDialog.showModal();
+  }
+  renderImportButtonState();
+}
+
+function closeImportDialog() {
+  if (importDialog.open) {
+    importDialog.close();
+  }
+  renderImportButtonState();
+}
+
 function handleDialogBackdropClick(event) {
-  const bounds = settingsDialog.getBoundingClientRect();
+  const dialog = event.currentTarget;
+  const bounds = dialog.getBoundingClientRect();
   const clickedInside =
     event.clientX >= bounds.left &&
     event.clientX <= bounds.right &&
@@ -1035,7 +1159,7 @@ function handleDialogBackdropClick(event) {
     event.clientY <= bounds.bottom;
 
   if (!clickedInside) {
-    closeSettingsDialog();
+    dialog.close();
   }
 }
 
@@ -1081,11 +1205,15 @@ function formatPlayLabel(actionId, label) {
 }
 
 function buildPlayTitle(play) {
-  return `${playerLabelFromId(play.playerId)} ${getActionLabel(play.actionId)}`;
+  return `${play.playerLabel ?? playerLabelFromId(play.playerId)} ${getActionLabel(play.actionId)}`;
 }
 
 function buildPlaySource(play) {
-  return `${playerLabelFromId(play.playerId)} -> ${getActionLabel(play.actionId)}`;
+  if (play.sourceText) {
+    return play.sourceText;
+  }
+
+  return `${play.playerLabel ?? playerLabelFromId(play.playerId)} -> ${getActionLabel(play.actionId)}`;
 }
 
 function getActionIcon(actionId) {
@@ -1138,7 +1266,7 @@ function deriveEvents({ playId, player, actionId, context, timestamp }) {
     case "SAVE":
       return [
         createEvent("SAVE", player.name, baseDimensions),
-        createEvent(`SAVE_${context.height}`, player.name, baseDimensions),
+        ...(context.height ? [createEvent(`SAVE_${context.height}`, player.name, baseDimensions)] : []),
       ];
     case "MISS":
       return [
@@ -1179,7 +1307,9 @@ function deriveShotEvents(player, baseDimensions, context, createEvent, shotType
   if (outcome === "GOAL") {
     events.push(createEvent("GOAL", player.name, shotDimensions));
     events.push(createEvent("SHOT_ON_GOAL", player.name, baseDimensions));
-    events.push(createEvent(`GOAL_ALLOWED_${context.height}`, "Goalkeeper", shotDimensions));
+    if (context.height) {
+      events.push(createEvent(`GOAL_ALLOWED_${context.height}`, "Goalkeeper", shotDimensions));
+    }
     if (shotType === "shot" && context.assistPlayerId && context.assistPlayerId !== "NONE") {
       events.push(createEvent("ASSIST", playerLabelFromId(context.assistPlayerId), {
         target_player: player.name,
@@ -1190,7 +1320,9 @@ function deriveShotEvents(player, baseDimensions, context, createEvent, shotType
 
   if (outcome === "SAVE") {
     events.push(createEvent("SHOT_ON_GOAL", player.name, baseDimensions));
-    events.push(createEvent(`SAVE_${context.height}`, "Goalkeeper", shotDimensions));
+    if (context.height) {
+      events.push(createEvent(`SAVE_${context.height}`, "Goalkeeper", shotDimensions));
+    }
   }
 
   if (outcome === "MISS") {
@@ -1291,9 +1423,933 @@ function seedDemoSequence() {
   render();
 }
 
+async function importProfixioPdf(mode) {
+  try {
+    const file = importFile.files?.[0];
+    if (!file) {
+      throw new Error(t("importPdfNoFile"));
+    }
+
+    const payload = await parseProfixioTimelinePdf(file, importTeamSide.value);
+    const imported = mapProfixioImportPayload(payload);
+
+    if (mode === "replace") {
+      state.plays = [];
+      state.events = [];
+      players = imported.players.length ? imported.players : [...defaultPlayers];
+      resetFlow();
+    } else if (imported.players.length) {
+      players = imported.players;
+    }
+
+    const existingPlayIds = new Set(state.plays.map((play) => play.id));
+    const existingEventIds = new Set(state.events.map((event) => event.id));
+
+    imported.plays.forEach((play) => {
+      if (!existingPlayIds.has(play.id)) {
+        state.plays.push(play);
+      }
+    });
+
+    imported.events.forEach((event) => {
+      if (!existingEventIds.has(event.id)) {
+        state.events.push(event);
+      }
+    });
+
+    state.importStatus = t("importPdfSuccessDebug", {
+      plays: imported.plays.length,
+      events: imported.events.length,
+      match: imported.matchLabel,
+      debug: formatPdfDebug(payload.debug ?? {}),
+    });
+    closeImportDialog();
+    render();
+  } catch (error) {
+    state.importStatus = t("importErrorPrefix", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    render();
+  }
+}
+
+function mapProfixioImportPayload(payload) {
+  if (!payload || !Array.isArray(payload.timeline)) {
+    throw new Error("Missing timeline array in imported JSON.");
+  }
+
+  const filteredTimeline = payload.timeline.filter((entry) => shouldImportTimelineEntry(entry));
+
+  const matchId = payload.match?.matchId ?? "unknown";
+  const gameId = `profixio-${matchId}`;
+  const teamName = payload.teamName ?? "Imported team";
+  const importedPlayers = buildImportedPlayers(payload.players ?? [], filteredTimeline, teamName);
+  const matchLabel = [
+    payload.match?.homeTeam,
+    payload.match?.awayTeam,
+  ].filter(Boolean).join(" vs ") || `match ${matchId}`;
+
+  const plays = filteredTimeline.map((entry, index) => {
+    const timestamp = normalizeImportedTimestamp(entry.createdAt, payload.match?.dateIso, index);
+    const playId = `profixio-play-${matchId}-${entry.eventId ?? index}`;
+    const playerKey = getImportedPlayerId(entry, teamName, index);
+    const actionId = mapImportedActionToPlay(entry);
+    const context = mapImportedContext(entry);
+
+    return {
+      id: playId,
+      gameId,
+      time: timestamp.toISOString(),
+      timeLabel: entry.displayGameTime ?? formatTime(timestamp),
+      playerId: playerKey,
+      playerLabel: entry.playerName ?? entry.teamName ?? teamName,
+      actionId,
+      context,
+      sourceText: buildImportedPlaySource(entry, payload.match, teamName, matchId),
+      label: entry.description ?? entry.action ?? "Imported event",
+      contextTokens: buildImportedPlayTokens(entry, context),
+      imported: true,
+    };
+  });
+
+  const events = filteredTimeline.flatMap((entry, index) => {
+    const timestamp = normalizeImportedTimestamp(entry.createdAt, payload.match?.dateIso, index);
+    const playId = `profixio-play-${matchId}-${entry.eventId ?? index}`;
+    const playerId = getImportedPlayerId(entry, teamName, index);
+    const actionId = mapImportedActionToPlay(entry);
+    const context = mapImportedContext(entry);
+    const player = {
+      id: playerId,
+      name: entry.playerName ?? entry.teamName ?? teamName,
+    };
+    const baseEvents = deriveEvents({
+      playId,
+      player,
+      actionId,
+      context,
+      timestamp,
+    }).map((event, derivedIndex) => ({
+      ...event,
+      id: `profixio-event-${matchId}-${entry.eventId ?? index}-${derivedIndex}`,
+      playerId,
+      playerLabel: event.playerLabel ?? player.name,
+      dimensions: {
+        ...event.dimensions,
+        ...buildImportedEventDimensions(entry, payload.match),
+      },
+      timeLabel: entry.displayGameTime ?? event.timeLabel,
+    }));
+
+    const extraEvents = [];
+    if (entry.assistPlayerName) {
+      extraEvents.push({
+        id: `profixio-event-${matchId}-${entry.eventId ?? index}-assist`,
+        playId,
+        playerId: getImportedAssistPlayerId(entry, index),
+        playerLabel: entry.assistPlayerName,
+        statType: "ASSIST",
+        dimensions: {
+          target_player: entry.playerName ?? "",
+          match_number: payload.match?.matchNumber ?? "",
+        },
+        time: timestamp.toISOString(),
+        timeLabel: entry.displayGameTime ?? formatTime(timestamp),
+      });
+    }
+
+    return [...baseEvents, ...extraEvents];
+  });
+
+  return { plays, events, matchLabel, players: importedPlayers };
+}
+
+async function parseProfixioTimelinePdf(file, side) {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error(t("importPdfUnsupported"));
+  }
+
+  const buffer = await file.arrayBuffer();
+  const pdfBytes = new Uint8Array(buffer);
+  const pdfText = new TextDecoder("latin1").decode(buffer);
+  const streams = extractPdfStreams(pdfBytes);
+  const decompressed = [];
+  const debug = {
+    fileName: file.name,
+    fileSize: file.size,
+    streamCount: streams.length,
+    decompressedCount: 0,
+    matchedTextBlocks: 0,
+    parsedTimelineRows: 0,
+    mergedPreview: "",
+    headerRows: "(none)",
+  };
+
+  for (const stream of streams) {
+    try {
+      const output = await readDecompressedDeflate(stream);
+      const text = new TextDecoder("latin1").decode(output);
+      decompressed.push(text);
+      debug.decompressedCount += 1;
+    } catch {
+      // Ignore non-text streams.
+    }
+  }
+
+  const mergedText = decompressed.join("\n");
+  debug.mergedPreview = mergedText.slice(0, 1200).replace(/\s+/g, " ").trim() || "(empty)";
+  const rows = decompressed.flatMap((content, pageIndex) => extractPdfTextRows(content, pageIndex));
+  debug.matchedTextBlocks = rows.length;
+  const parsedRows = buildPdfTimelineRows(rows);
+  debug.parsedTimelineRows = parsedRows.length;
+  const match = parsePdfMatchMetadata(rows, parsedRows, debug);
+  const teamName = side === "away" ? match.awayTeam : match.homeTeam;
+  const teamRows = parsedRows.filter((row) => matchesSelectedPdfSide(row.teamName, teamName));
+  const filteredTimeline = collapsePdfPenaltyAwards(teamRows
+    .map((row, index) => ({
+      eventId: `pdf-${match.matchNumber}-${index}`,
+      eventTypeId: null,
+      action: inferPdfRowAction(row),
+      description: row.actionText,
+      teamId: side === "away" ? "away" : "home",
+      teamName,
+      playerId: row.playerNumber ? `pdf-${side}-${row.playerNumber}` : null,
+      playerName: row.playerName || null,
+      playerNumber: row.playerNumber || null,
+      assistPlayerId: null,
+      assistPlayerName: null,
+      assistPlayerNumber: null,
+      displayGameTime: row.time,
+      period: null,
+      timeInPeriod: row.time,
+      score: parsePdfScore(row.score),
+      goals: row.actionText.includes("Mål") ? 1 : null,
+      comment: null,
+      createdAt: null,
+      sortOrder: buildPdfSortOrder(row.time, index),
+    })));
+
+  if (!filteredTimeline.length) {
+    throw new Error(`${t("importPdfNoRows", { team: teamName })}\n\n${t("importPdfDebug", { debug: formatPdfDebug(debug) })}`);
+  }
+
+  return {
+    teamName,
+    players: extractPdfPlayers(teamRows, teamName, side),
+    match: {
+      matchId: match.matchNumber,
+      matchNumber: match.matchNumber,
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      dateIso: null,
+    },
+    timeline: filteredTimeline,
+    debug,
+  };
+}
+
+function mapImportedActionToPlay(entry) {
+  const description = String(entry.description ?? "").toLowerCase();
+
+  if (description.includes("7-m")) {
+    return "PENALTY";
+  }
+  if (entry.action === "GOAL") {
+    return "SHOT";
+  }
+  if (entry.action === "SAVE") {
+    return "SAVE";
+  }
+  if (entry.action === "MISS") {
+    return "MISS";
+  }
+  if (entry.action === "WARNING" || entry.action === "CARD") {
+    return "CARD";
+  }
+  if (entry.action === "SUSPENSION") {
+    return "SUSPENSION";
+  }
+  if (description.includes("kort")) {
+    return "CARD";
+  }
+  if (description.includes("utvisning")) {
+    return "SUSPENSION";
+  }
+  if (description.includes("block")) {
+    return "BLOCK";
+  }
+  if (description.includes("stöld")) {
+    return "STEAL";
+  }
+  return null;
+}
+
+function collapsePdfPenaltyAwards(entries) {
+  const collapsed = [];
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const current = entries[index];
+    const description = String(current.description ?? "").toLowerCase().trim();
+    const next = entries[index + 1];
+    const nextDescription = String(next?.description ?? "").toLowerCase().trim();
+
+    if (
+      description === "tilldömd 7-m"
+      && next
+      && current.teamId === next.teamId
+      && current.teamName === next.teamName
+      && isPdfPenaltyResultDescription(nextDescription)
+    ) {
+      collapsed.push({
+        ...next,
+        eventId: current.eventId,
+        action: inferPdfRowAction({ actionText: next.description }),
+        description: next.description,
+        sortOrder: next.sortOrder,
+      });
+      index += 1;
+      continue;
+    }
+
+    collapsed.push(current);
+  }
+
+  return collapsed;
+}
+
+function isPdfPenaltyResultDescription(description) {
+  return description === "mål 7-m" || description === "7-m miss" || description === "miss 7-m";
+}
+
+function isSupportedImportedAction(actionId) {
+  return [
+    "SHOT",
+    "PENALTY",
+    "SAVE",
+    "MISS",
+    "CARD",
+    "SUSPENSION",
+    "BLOCK",
+    "STEAL",
+  ].includes(actionId);
+}
+
+function extractPdfStreams(pdfBytes) {
+  const streams = [];
+  const streamMarker = new TextEncoder().encode("stream");
+  const endstreamMarker = new TextEncoder().encode("endstream");
+
+  let offset = 0;
+  while (offset < pdfBytes.length) {
+    const streamIndex = findByteSequence(pdfBytes, streamMarker, offset);
+    if (streamIndex < 0) {
+      break;
+    }
+
+    let dataStart = streamIndex + streamMarker.length;
+    if (pdfBytes[dataStart] === 0x0d && pdfBytes[dataStart + 1] === 0x0a) {
+      dataStart += 2;
+    } else if (pdfBytes[dataStart] === 0x0a) {
+      dataStart += 1;
+    }
+
+    const declaredLength = readPdfStreamLength(pdfBytes, streamIndex);
+    const fallbackEndIndex = findByteSequence(pdfBytes, endstreamMarker, dataStart);
+    const dataEnd = declaredLength && dataStart + declaredLength <= pdfBytes.length
+      ? dataStart + declaredLength
+      : fallbackEndIndex;
+
+    if (dataEnd < 0) {
+      break;
+    }
+
+    streams.push(pdfBytes.slice(dataStart, dataEnd));
+
+    const nextOffset = declaredLength && dataStart + declaredLength <= pdfBytes.length
+      ? findByteSequence(pdfBytes, endstreamMarker, dataEnd)
+      : dataEnd;
+    offset = nextOffset >= 0
+      ? nextOffset + endstreamMarker.length
+      : dataEnd + endstreamMarker.length;
+  }
+
+  return streams;
+}
+
+function readPdfStreamLength(pdfBytes, streamIndex) {
+  const dictionaryStart = Math.max(0, streamIndex - 512);
+  const dictionaryText = new TextDecoder("latin1").decode(pdfBytes.slice(dictionaryStart, streamIndex));
+  const matches = [...dictionaryText.matchAll(/\/Length\s+(\d+)/g)];
+  if (!matches.length) {
+    return null;
+  }
+
+  return Number(matches[matches.length - 1][1]);
+}
+
+function findByteSequence(bytes, pattern, fromIndex = 0) {
+  outer: for (let index = fromIndex; index <= bytes.length - pattern.length; index += 1) {
+    for (let patternIndex = 0; patternIndex < pattern.length; patternIndex += 1) {
+      if (bytes[index + patternIndex] !== pattern[patternIndex]) {
+        continue outer;
+      }
+    }
+    return index;
+  }
+
+  return -1;
+}
+
+async function readDecompressedDeflate(bytes) {
+  const formats = ["deflate", "deflate-raw"];
+  let lastError = null;
+
+  for (const format of formats) {
+    try {
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream(format));
+      const buffer = await new Response(stream).arrayBuffer();
+      return new Uint8Array(buffer);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error("Unable to decompress PDF stream.");
+}
+
+function extractPdfTextRows(content, pageIndex = 0) {
+  return [...content.matchAll(/BT\s+([0-9.]+)\s+([0-9.]+)\s+Td\s+\[\(([\s\S]*?)\)\]\s+TJ\s+ET/g)]
+    .map((match) => ({
+      x: Number(match[1]),
+      y: Number(match[2]),
+      page: pageIndex,
+      text: decodePdfText(match[3]),
+    }))
+    .filter((row) => row.text);
+}
+
+function decodePdfText(value) {
+  return value
+    .replaceAll("\\(", "(")
+    .replaceAll("\\)", ")")
+    .replaceAll("\\n", " ")
+    .replaceAll("\\\\", "\\")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parsePdfMatchMetadata(rows, parsedRows = [], debug = null) {
+  const headerLine = rows.find((row) => row.text.includes("Match nr:"));
+  const titleCandidates = rows
+    .filter((row) => row.y >= 620)
+    .map((row) => row.text.replace(/\s+/g, " ").trim());
+
+  if (debug) {
+    debug.headerRows = titleCandidates.length ? titleCandidates.join("\n") : "(none)";
+  }
+
+  const matchNumber = headerLine?.text.match(/Match nr:\s*([^ ]+(?:\s+[^ ]+){0,4})/)?.[1]?.trim()
+    ?? headerLine?.text.match(/Match nr:\s*(.+?)\s+Serie:/)?.[1]?.trim()
+    ?? "unknown";
+
+  let homeTeam = "";
+  let awayTeam = "";
+
+  const lastHeaderRow = [...titleCandidates].reverse().find((text) => splitPdfTeamNames(text));
+  if (lastHeaderRow) {
+    [homeTeam, awayTeam] = splitPdfTeamNames(lastHeaderRow);
+  }
+
+  const inferredTeams = inferPdfTeamsFromTimelineRows(parsedRows);
+  if ((!homeTeam || !awayTeam) && inferredTeams) {
+    [homeTeam, awayTeam] = inferredTeams;
+  }
+
+  if ((!homeTeam || !awayTeam) && headerLine) {
+    const normalizedHeader = headerLine.text.replace(/\s+/g, " ").trim();
+    const headerMatch = normalizedHeader.match(/Match nr:\s*(.*?)\s+Serie:\s*(.*?)\s+(.+?)\s+(.+)$/);
+
+    if (headerMatch) {
+      const tail = headerMatch[3] + " " + headerMatch[4];
+      const teamSplit = splitPdfTeamNames(tail);
+      if (teamSplit) {
+        [homeTeam, awayTeam] = teamSplit;
+      }
+    }
+  }
+
+  if (!homeTeam || !awayTeam) {
+    const fallbackCandidate = titleCandidates.find((text) => splitPdfTeamNames(text));
+    if (fallbackCandidate) {
+      [homeTeam, awayTeam] = splitPdfTeamNames(fallbackCandidate);
+    }
+  }
+
+  if (!homeTeam || !awayTeam) {
+    const candidateText = titleCandidates.length
+      ? titleCandidates.join("\n")
+      : unique(
+        parsedRows
+          .map((row) => row.teamName)
+          .filter(Boolean),
+      ).join("\n") || "(none)";
+    const parsedRowText = parsedRows.length
+      ? parsedRows
+        .slice(0, 40)
+        .map((row) => [
+          row.time ?? "",
+          row.score ?? "",
+          row.teamName ?? "",
+          row.actionText ?? "",
+          row.playerNumber ?? "",
+          row.playerName ?? "",
+        ].join(" | "))
+        .join("\n")
+      : "(none)";
+    throw new Error(
+      `${t("importPdfTeamsNotFound")}\n\n${t("importPdfCandidates", { rows: candidateText })}\n\n${t("importPdfParsedRows", { rows: parsedRowText })}${debug ? `\n\n${t("importPdfDebug", { debug: formatPdfDebug(debug) })}` : ""}`,
+    );
+  }
+
+  return { matchNumber, homeTeam, awayTeam };
+}
+
+function splitPdfTeamNames(text) {
+  const normalized = String(text).replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (/match nr:|serie:|datum:|arena:|rad$|^rad$|^tid$|^mål$|^lag$|^händelse$|^nr$|^spelare$/i.test(normalized)) {
+    return null;
+  }
+
+  if (normalized.includes(":")) {
+    return null;
+  }
+
+  const dashSplit = normalized.split(/\s*[-–]\s*/).map((part) => part.trim()).filter(Boolean);
+  if (dashSplit.length === 2 && dashSplit.every((part) => part.split(" ").length >= 2)) {
+    return dashSplit;
+  }
+
+  const suffixes = [" Röd", " Blå", " Vit", " Svart", " Gul", " Grön", " HF", " HK", " IK"];
+  for (const suffix of suffixes) {
+    const index = normalized.indexOf(suffix);
+    if (index > 0) {
+      const left = normalized.slice(0, index + suffix.length).trim();
+      const right = normalized.slice(index + suffix.length).trim();
+      if (left && right && left.split(" ").length >= 2 && right.split(" ").length >= 2) {
+        return [left, right];
+      }
+    }
+  }
+
+  const tokenPatterns = [
+    /^(.*?\b(?:Röd|Blå|Vit|Svart|Gul|Grön)\b)\s+(.*)$/,
+    /^(.*?\b(?:HF|HK|IK)\b)\s+(.*)$/,
+  ];
+  for (const pattern of tokenPatterns) {
+    const match = normalized.match(pattern);
+    if (match && match[1] && match[2] && match[1].split(" ").length >= 2 && match[2].split(" ").length >= 2) {
+      return [match[1].trim(), match[2].trim()];
+    }
+  }
+
+  return null;
+}
+
+function inferPdfTeamsFromTimelineRows(rows) {
+  const teams = unique(rows.map((row) => row.teamName).filter(Boolean));
+  if (teams.length !== 2) {
+    return null;
+  }
+
+  const goalRows = rows.filter((row) => row.actionText && row.actionText.includes("Mål") && parsePdfScore(row.score));
+  let previousScore = null;
+
+  for (const row of goalRows) {
+    const score = parsePdfScore(row.score);
+    if (!score) {
+      continue;
+    }
+
+    if (!previousScore) {
+      if (score.home === 1 && score.away === 0) {
+        return [row.teamName, teams.find((team) => team !== row.teamName)];
+      }
+      if (score.home === 0 && score.away === 1) {
+        return [teams.find((team) => team !== row.teamName), row.teamName];
+      }
+      previousScore = score;
+      continue;
+    }
+
+    const homeDelta = score.home - previousScore.home;
+    const awayDelta = score.away - previousScore.away;
+
+    if (homeDelta === 1 && awayDelta === 0) {
+      return [row.teamName, teams.find((team) => team !== row.teamName)];
+    }
+    if (homeDelta === 0 && awayDelta === 1) {
+      return [teams.find((team) => team !== row.teamName), row.teamName];
+    }
+
+    previousScore = score;
+  }
+
+  return [teams[0], teams[1]];
+}
+
+function buildPdfTimelineRows(rows) {
+  const rowsByPage = new Map();
+
+  rows.forEach((row) => {
+    const pageRows = rowsByPage.get(row.page ?? 0) ?? [];
+    pageRows.push(row);
+    rowsByPage.set(row.page ?? 0, pageRows);
+  });
+
+  return [...rowsByPage.entries()]
+    .sort((left, right) => left[0] - right[0])
+    .flatMap(([, pageRows]) => {
+      const grouped = new Map();
+
+      pageRows.forEach((row) => {
+        const yKey = Math.round(row.y * 10) / 10;
+        const bucket = grouped.get(yKey) ?? [];
+        bucket.push(row);
+        grouped.set(yKey, bucket);
+      });
+
+      return [...grouped.entries()]
+        .sort((left, right) => right[0] - left[0])
+        .map(([, columns]) => columns.sort((left, right) => left.x - right.x))
+        .map((columns) => mapPdfColumnsToRow(columns))
+        .filter((row) => row && row.time && row.actionText && row.actionText !== "Händelse");
+    });
+}
+
+function mapPdfColumnsToRow(columns) {
+  const row = {
+    time: null,
+    score: null,
+    teamName: null,
+    actionText: null,
+    playerNumber: null,
+    playerName: null,
+  };
+
+  columns.forEach((column) => {
+    if (column.x >= 70 && column.x < 100) {
+      row.time = column.text;
+    } else if (column.x >= 100 && column.x < 130) {
+      row.score = column.text;
+    } else if (column.x >= 130 && column.x < 200) {
+      row.teamName = column.text;
+    } else if (column.x >= 200 && column.x < 360) {
+      row.actionText = column.text;
+    } else if (column.x >= 360 && column.x < 395) {
+      row.playerNumber = column.text;
+    } else if (column.x >= 395) {
+      row.playerName = column.text;
+    }
+  });
+
+  if (!row.time || !/^\d+:\d{2}$/.test(row.time)) {
+    return null;
+  }
+
+  return row;
+}
+
+function matchesSelectedPdfSide(rowTeamName, selectedTeamName) {
+  if (!rowTeamName || !selectedTeamName) {
+    return false;
+  }
+
+  const normalize = (value) => value
+    .toLowerCase()
+    .replace(/\.\.\.$/, "")
+    .replace(/\.\.\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const rowValue = normalize(rowTeamName);
+  const selectedValue = normalize(selectedTeamName);
+
+  return selectedValue.startsWith(rowValue) || rowValue.startsWith(selectedValue) || selectedValue.includes(rowValue);
+}
+
+function inferPdfRowAction(row) {
+  const text = String(row.actionText ?? "").toLowerCase();
+
+  if (text.includes("miss")) {
+    return "MISS";
+  }
+  if (text.includes("mål")) {
+    return "GOAL";
+  }
+  if (text.includes("varning")) {
+    return "WARNING";
+  }
+  if (text.includes("utvisning")) {
+    return "SUSPENSION";
+  }
+  return "EVENT";
+}
+
+function shouldImportTimelineEntry(entry) {
+  const description = String(entry.description ?? "").toLowerCase().trim();
+
+  if (!description) {
+    return false;
+  }
+
+  if (
+    description === "spelare aktiverad"
+    || description === "start första halvlek"
+    || description === "start andra halvlek"
+    || description === "matchen är slut"
+    || description === "text"
+    || description === "tilldömd 7-m"
+  ) {
+    return false;
+  }
+
+  return isSupportedImportedAction(mapImportedActionToPlay(entry));
+}
+
+function parsePdfScore(value) {
+  const match = String(value ?? "").match(/^(\d+)-(\d+)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    home: Number(match[1]),
+    away: Number(match[2]),
+  };
+}
+
+function buildPdfSortOrder(time, index) {
+  const match = String(time).match(/^(\d+):(\d{2})$/);
+  if (!match) {
+    return index;
+  }
+
+  return Number(match[1]) * 6000 + Number(match[2]) * 100 + index;
+}
+
+function mapImportedContext(entry) {
+  const description = String(entry.description ?? "").toLowerCase();
+
+  if (description.includes("miss 7-m") || description.includes("7-m miss")) {
+    return { outcome: "MISS" };
+  }
+  if (entry.action === "GOAL" && description.includes("7-m")) {
+    return { outcome: "GOAL" };
+  }
+  if (entry.action === "GOAL") {
+    return { outcome: "GOAL" };
+  }
+  if (entry.action === "WARNING") {
+    return { cardType: "YELLOW" };
+  }
+  if (entry.action === "CARD") {
+    return { cardType: "RED" };
+  }
+  if (entry.action === "SUSPENSION") {
+    return { duration: "2 MIN" };
+  }
+  return {};
+}
+
+function mapImportedStatType(entry) {
+  if (entry.action === "EVENT") {
+    return slugifyStatLabel(entry.description ?? "EVENT");
+  }
+  return entry.action ?? "EVENT";
+}
+
+function buildImportedPlaySource(entry, match, teamName, matchId) {
+  return [
+    teamName,
+    match?.matchNumber ?? matchId,
+    entry.description ?? "Imported event",
+  ].filter(Boolean).join(" • ");
+}
+
+function buildImportedPlayTokens(entry, context) {
+  return [
+    ...Object.entries(context ?? {}).map(([key, value]) => `${key}:${formatContextOption(key, value)}`),
+    entry.playerNumber ? `#${entry.playerNumber}` : null,
+    entry.score ? `score:${entry.score.home}-${entry.score.away}` : null,
+  ].filter(Boolean);
+}
+
+function buildPlayContextTokens({ existingPlay = null, context = {}, preserveImportedMetadata = false }) {
+  const contextTokens = Object.entries(context).map(([key, value]) => `${key}:${formatContextOption(key, value)}`);
+  if (!preserveImportedMetadata) {
+    return contextTokens;
+  }
+
+  const contextPrefixes = ["height:", "location:", "outcome:", "assistPlayerId:", "cardType:", "duration:"];
+  const preservedTokens = (existingPlay.contextTokens ?? []).filter((token) => !contextPrefixes.some((prefix) => token.startsWith(prefix)));
+  return [...contextTokens, ...preservedTokens];
+}
+
+function buildImportedEventDimensions(entry, match) {
+  return {
+    period: entry.period ?? "",
+    clock: entry.displayGameTime ?? "",
+    match_number: match?.matchNumber ?? "",
+    player_number: entry.playerNumber ?? "",
+    score: entry.score ? `${entry.score.home}-${entry.score.away}` : "",
+    attack_type: String(entry.description ?? "").includes("7-m") ? "penalty" : "",
+  };
+}
+
+function buildImportedPlayers(scannedPlayers, timeline, teamName) {
+  const playersById = new Map();
+
+  scannedPlayers.forEach((player) => {
+    if (player?.id) {
+      playersById.set(player.id, player);
+    }
+  });
+
+  timeline.forEach((entry, index) => {
+    const playerId = getImportedPlayerId(entry, teamName, index);
+    if (!playersById.has(playerId)) {
+      playersById.set(playerId, {
+        id: playerId,
+        number: entry.playerNumber ?? "?",
+        name: entry.playerName ?? `${teamName} event`,
+      });
+    }
+
+    if (entry.assistPlayerName) {
+      const assistPlayerId = getImportedAssistPlayerId(entry, index);
+      if (!playersById.has(assistPlayerId)) {
+        playersById.set(assistPlayerId, {
+          id: assistPlayerId,
+          number: entry.assistPlayerNumber ?? "?",
+          name: entry.assistPlayerName,
+        });
+      }
+    }
+  });
+
+  return [...playersById.values()].sort(compareImportedPlayers);
+}
+
+function extractPdfPlayers(rows, teamName, side) {
+  const playersByKey = new Map();
+
+  rows.forEach((row, index) => {
+    if (!row.playerName && !row.playerNumber) {
+      return;
+    }
+
+    const entry = {
+      playerId: row.playerNumber ? `pdf-${side}-${row.playerNumber}` : null,
+      playerName: row.playerName || null,
+      playerNumber: row.playerNumber || null,
+    };
+    const player = {
+      id: getImportedPlayerId(entry, teamName, index),
+      number: row.playerNumber ?? "?",
+      name: row.playerName ?? `${teamName} player`,
+    };
+    playersByKey.set(`${player.number}|${player.name}`, player);
+  });
+
+  return [...playersByKey.values()].sort(compareImportedPlayers);
+}
+
+function compareImportedPlayers(left, right) {
+  const leftNumber = Number(left.number);
+  const rightNumber = Number(right.number);
+  const leftHasNumber = Number.isFinite(leftNumber);
+  const rightHasNumber = Number.isFinite(rightNumber);
+
+  if (leftHasNumber && rightHasNumber && leftNumber !== rightNumber) {
+    return leftNumber - rightNumber;
+  }
+  if (leftHasNumber !== rightHasNumber) {
+    return leftHasNumber ? -1 : 1;
+  }
+
+  return String(left.name).localeCompare(String(right.name), "sv");
+}
+
+function getImportedPlayerId(entry, teamName, index) {
+  if (entry.playerId) {
+    return `profixio-player-${entry.playerId}`;
+  }
+
+  if (entry.playerName) {
+    return `profixio-player-${slugifyIdentifier(`${entry.playerName}-${entry.playerNumber ?? index}`)}`;
+  }
+
+  return `profixio-player-${slugifyIdentifier(`${teamName}-event-${entry.eventId ?? index}`)}`;
+}
+
+function getImportedAssistPlayerId(entry, index) {
+  if (entry.assistPlayerId) {
+    return `profixio-player-${entry.assistPlayerId}`;
+  }
+
+  return `profixio-player-${slugifyIdentifier(`${entry.assistPlayerName ?? "assist"}-${entry.assistPlayerNumber ?? index}`)}`;
+}
+
+function normalizeImportedTimestamp(createdAt, fallbackIso, index) {
+  const iso = createdAt ?? fallbackIso;
+  const parsed = iso ? new Date(iso) : new Date();
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  return new Date(Date.now() + index * 1000);
+}
+
+function slugifyStatLabel(value) {
+  return String(value)
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .toUpperCase() || "EVENT";
+}
+
+function slugifyIdentifier(value) {
+  return String(value)
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .toLowerCase() || crypto.randomUUID();
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
+function formatPdfDebug(debug) {
+  return [
+    `file=${debug.fileName ?? "(unknown)"}`,
+    `size=${debug.fileSize ?? "(unknown)"}`,
+    `streams=${debug.streamCount ?? "(unknown)"}`,
+    `decompressed=${debug.decompressedCount ?? "(unknown)"}`,
+    `text_blocks=${debug.matchedTextBlocks ?? "(unknown)"}`,
+    `parsed_rows=${debug.parsedTimelineRows ?? "(unknown)"}`,
+    `header_rows=${debug.headerRows ?? "(unknown)"}`,
+    `preview=${debug.mergedPreview ?? "(unknown)"}`,
+  ].join("\n");
+}
+
 function loadPlayIntoEditor(playId) {
   const play = state.plays.find((entry) => entry.id === playId);
-  if (!play) {
+  if (!play || play.editable === false) {
     return;
   }
 

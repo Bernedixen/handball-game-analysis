@@ -502,6 +502,42 @@ button {
   overflow: auto;
 }
 
+.import-panel {
+  gap: 16px;
+}
+
+.import-group {
+  display: grid;
+  gap: 10px;
+}
+
+.import-side-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 12px;
+  align-items: end;
+}
+
+.import-file,
+.import-select {
+  width: 100%;
+}
+
+.import-file,
+.import-select {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  font: inherit;
+}
+
+.import-status {
+  min-height: 56px;
+  white-space: pre-wrap;
+}
+
 .settings-card {
   padding: 14px 16px;
   border-radius: var(--radius-md);
@@ -712,6 +748,10 @@ button {
   .panel-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .import-side-row {
+    grid-template-columns: 1fr;
   }
 
   .hero-topline {
