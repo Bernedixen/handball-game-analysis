@@ -39,7 +39,7 @@ const translations = {
     openSettings: "Open settings",
     closeSettings: "Close settings",
     importTitle: "Import Profixio timeline",
-    importCopy: "Upload a Profixio timeline PDF and import the selected side into the app.",
+    importCopy: "Upload one or more Profixio timeline PDFs and import the selected side from each file into the app.",
     openImport: "Open import dialog",
     closeImport: "Close import dialog",
     openPlayerStats: "Open player stats",
@@ -62,13 +62,33 @@ const translations = {
     playerStatsTechFaults: "Tech",
     playerStatsSuspensions: "Susp",
     playerStatsWarnings: "Warn",
-    importPdfLabel: "Imported PDF",
-    importPdfNote: "Upload a Profixio timeline PDF and choose which side to import.",
+    importPdfLabel: "Imported PDFs",
+    importPdfNote: "Upload one or more Profixio timeline PDFs and choose home or away for each file.",
     importTeamLabel: "Team side",
     importTeamHome: "Home team",
     importTeamAway: "Away team",
-    importPdfButton: "Import PDF",
+    importPdfButton: "Import PDFs",
     importEmpty: "No import loaded.",
+    importPdfListEmpty: "No PDFs selected.",
+    importPdfListLoading: "Reading PDF teams...",
+    importPdfListUnknownMatch: "Unknown match",
+    importPdfListMatchup: "{home} vs {away}",
+    importPdfSideLabel: "Import side",
+    importPdfSidePrompt: "Choose which team to import from this PDF.",
+    importPdfHomeOption: "Home: {team}",
+    importPdfAwayOption: "Away: {team}",
+    importPdfAnalyzing: "Reading {count} PDF files...",
+    importPdfNoReadyFiles: "Select at least one readable PDF first.",
+    importPdfSummary: "Imported {plays} plays and {events} events across {games} games.",
+    sampleBundlesLabel: "Sample bundles",
+    sampleBundlesNote: "Load one of the bundled sample folders directly into the importer.",
+    sampleBundlesEmpty: "No sample bundles available.",
+    sampleBundlesLoading: "Loading sample bundles...",
+    sampleBundlesUnavailable: "Bundled sample folders require running the app from a local web server.",
+    sampleBundleLoad: "Load {bundle}",
+    sampleBundleLoading: "Loading {bundle}...",
+    sampleBundleLoaded: "Loaded {count} sample PDFs from {bundle}.",
+    sampleBundleFailed: "Could not load sample bundle {bundle}: {message}",
     importSuccess: "Imported {plays} plays and {events} events from {match}.",
     importErrorPrefix: "Import error: {message}",
     importPdfNoFile: "Choose a PDF file first.",
@@ -209,7 +229,7 @@ const translations = {
     openSettings: "Öppna inställningar",
     closeSettings: "Stäng inställningar",
     importTitle: "Importera Profixio-tidslinje",
-    importCopy: "Ladda upp en Profixio-tidslinje som PDF och importera vald sida i appen.",
+    importCopy: "Ladda upp en eller flera Profixio-tidslinjer som PDF och importera vald sida från varje fil i appen.",
     openImport: "Öppna importdialog",
     closeImport: "Stäng importdialog",
     openPlayerStats: "Öppna spelarstatistik",
@@ -232,13 +252,33 @@ const translations = {
     playerStatsTechFaults: "Tek",
     playerStatsSuspensions: "Utv",
     playerStatsWarnings: "Var",
-    importPdfLabel: "Importerad PDF",
-    importPdfNote: "Ladda upp en Profixio-tidslinje som PDF och välj vilken sida som ska importeras.",
+    importPdfLabel: "Importerade PDF:er",
+    importPdfNote: "Ladda upp en eller flera Profixio-tidslinjer som PDF och välj hemma eller borta för varje fil.",
     importTeamLabel: "Lagsida",
     importTeamHome: "Hemmalag",
     importTeamAway: "Bortalag",
-    importPdfButton: "Importera PDF",
+    importPdfButton: "Importera PDF:er",
     importEmpty: "Ingen import inläst.",
+    importPdfListEmpty: "Inga PDF:er valda.",
+    importPdfListLoading: "Läser in PDF-lag...",
+    importPdfListUnknownMatch: "Okänd match",
+    importPdfListMatchup: "{home} vs {away}",
+    importPdfSideLabel: "Importera sida",
+    importPdfSidePrompt: "Välj vilket lag som ska importeras från denna PDF.",
+    importPdfHomeOption: "Hemma: {team}",
+    importPdfAwayOption: "Borta: {team}",
+    importPdfAnalyzing: "Läser in {count} PDF-filer...",
+    importPdfNoReadyFiles: "Välj minst en läsbar PDF först.",
+    importPdfSummary: "Importerade {plays} spel och {events} händelser över {games} matcher.",
+    sampleBundlesLabel: "Exempelpaket",
+    sampleBundlesNote: "Ladda ett av de medföljande exempelmapparna direkt i importen.",
+    sampleBundlesEmpty: "Inga exempelpaket tillgängliga.",
+    sampleBundlesLoading: "Läser in exempelpaket...",
+    sampleBundlesUnavailable: "Medföljande exempelmappar kräver att appen körs från en lokal webbserver.",
+    sampleBundleLoad: "Ladda {bundle}",
+    sampleBundleLoading: "Läser in {bundle}...",
+    sampleBundleLoaded: "Laddade {count} exempel-PDF:er från {bundle}.",
+    sampleBundleFailed: "Kunde inte ladda exempelpaketet {bundle}: {message}",
     importSuccess: "Importerade {plays} spel och {events} händelser från {match}.",
     importErrorPrefix: "Importfel: {message}",
     importPdfNoFile: "Välj en PDF-fil först.",
@@ -448,6 +488,11 @@ const state = {
   plays: [],
   events: [],
   importStatus: null,
+  importPdfSelections: [],
+  importPdfSelectionRequestId: 0,
+  sampleBundles: [],
+  sampleBundlesLoading: false,
+  sampleBundleActiveId: null,
   playerStatsSort: { key: "goals", direction: "desc" },
 };
 
@@ -477,7 +522,8 @@ const closePlayerStatsButton = document.querySelector("#close-player-stats");
 const playerStatsDialog = document.querySelector("#player-stats-dialog");
 const playerStatsTableHost = document.querySelector("#player-stats-table-host");
 const importFile = document.querySelector("#import-file");
-const importTeamSide = document.querySelector("#import-team-side");
+const sampleBundlesHost = document.querySelector("#sample-bundles");
+const importPdfList = document.querySelector("#import-pdf-list");
 const importPdfButton = document.querySelector("#import-pdf");
 const importStatus = document.querySelector("#import-status");
 const playCount = document.querySelector("#play-count");
@@ -507,9 +553,11 @@ importDialog.addEventListener("click", handleDialogBackdropClick);
 playerStatsDialog.addEventListener("close", renderPlayerStatsButtonState);
 playerStatsDialog.addEventListener("click", handleDialogBackdropClick);
 importPdfButton.addEventListener("click", () => importProfixioPdf("replace"));
+importFile.addEventListener("change", handleImportFileSelection);
 langEnButton.addEventListener("click", () => setLanguage("en-US"));
 langSvButton.addEventListener("click", () => setLanguage("sv-SE"));
 
+loadSampleBundles();
 render();
 
 function render() {
@@ -522,6 +570,8 @@ function render() {
   renderImportButtonState();
   renderPlayerStatsButtonState();
   renderSettings();
+  renderSampleBundles();
+  renderImportPdfSelections();
   renderImportStatus();
   renderPlayerStatsTable();
   renderPlayLog();
@@ -564,9 +614,8 @@ function renderChromeText() {
   document.querySelector("#close-player-stats").setAttribute("aria-label", t("closePlayerStats"));
   document.querySelector("#import-file-label").textContent = t("importPdfLabel");
   document.querySelector("#import-file-note").textContent = t("importPdfNote");
-  document.querySelector("#import-team-label").textContent = t("importTeamLabel");
-  importTeamSide.options[0].textContent = t("importTeamHome");
-  importTeamSide.options[1].textContent = t("importTeamAway");
+  document.querySelector("#sample-bundles-label").textContent = t("sampleBundlesLabel");
+  document.querySelector("#sample-bundles-note").textContent = t("sampleBundlesNote");
   importPdfButton.textContent = t("importPdfButton");
   backStepButton.textContent = t("back");
   nextStepButton.textContent = t("next");
@@ -1109,6 +1158,105 @@ function renderPlayerStatsButtonState() {
   togglePlayerStatsButton.classList.toggle("is-active", isOpen);
 }
 
+function renderSampleBundles() {
+  if (state.sampleBundlesLoading) {
+    sampleBundlesHost.className = "sample-bundles empty-state";
+    sampleBundlesHost.textContent = t("sampleBundlesLoading");
+    return;
+  }
+
+  if (!state.sampleBundles.length) {
+    sampleBundlesHost.className = "sample-bundles empty-state";
+    sampleBundlesHost.textContent = window.location.protocol === "file:"
+      ? t("sampleBundlesUnavailable")
+      : t("sampleBundlesEmpty");
+    return;
+  }
+
+  sampleBundlesHost.className = "sample-bundles";
+  sampleBundlesHost.innerHTML = "";
+
+  state.sampleBundles.forEach((bundle) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `ghost-button sample-bundle-button ${state.sampleBundleActiveId === bundle.id ? "is-active" : ""}`.trim();
+    button.textContent = state.sampleBundleActiveId === bundle.id
+      ? t("sampleBundleLoading", { bundle: bundle.label })
+      : t("sampleBundleLoad", { bundle: bundle.label });
+    button.disabled = Boolean(state.sampleBundleActiveId);
+    button.addEventListener("click", () => {
+      loadSampleBundle(bundle.id);
+    });
+    sampleBundlesHost.appendChild(button);
+  });
+}
+
+function renderImportPdfSelections() {
+  const selections = state.importPdfSelections;
+  if (!selections.length) {
+    importPdfList.className = "import-pdf-list empty-state";
+    importPdfList.textContent = t("importPdfListEmpty");
+    return;
+  }
+
+  importPdfList.className = "import-pdf-list";
+  importPdfList.innerHTML = "";
+
+  selections.forEach((selection, index) => {
+    const card = document.createElement("article");
+    card.className = "import-pdf-card context-group";
+
+    const title = selection.match
+      ? t("importPdfListMatchup", {
+        home: selection.match.homeTeam || t("importTeamHome"),
+        away: selection.match.awayTeam || t("importTeamAway"),
+      })
+      : t("importPdfListUnknownMatch");
+
+    card.innerHTML = `
+      <div class="import-pdf-card-header">
+        <div>
+          <p class="log-item-title">${selection.file.name}</p>
+          <p class="log-item-subtitle">${title}</p>
+        </div>
+      </div>
+    `;
+
+    const body = document.createElement("div");
+    body.className = "import-pdf-card-body";
+
+    if (selection.loading) {
+      body.textContent = t("importPdfListLoading");
+    } else if (selection.error) {
+      body.className = "import-pdf-card-body empty-state";
+      body.textContent = selection.error;
+    } else {
+      const label = document.createElement("label");
+      label.className = "context-group import-group";
+      label.innerHTML = `
+        <p class="context-group-label">${t("importPdfSideLabel")}</p>
+        <p class="stage-copy">${t("importPdfSidePrompt")}</p>
+      `;
+
+      const select = document.createElement("select");
+      select.className = "import-select";
+      select.innerHTML = `
+        <option value="home">${t("importPdfHomeOption", { team: selection.match?.homeTeam ?? t("importTeamHome") })}</option>
+        <option value="away">${t("importPdfAwayOption", { team: selection.match?.awayTeam ?? t("importTeamAway") })}</option>
+      `;
+      select.value = selection.side;
+      select.addEventListener("change", (event) => {
+        updateImportPdfSide(index, event.target.value);
+      });
+      label.appendChild(select);
+      body.appendChild(label);
+    }
+
+    card.appendChild(body);
+    importPdfList.appendChild(card);
+  });
+}
+
 function renderImportStatus() {
   if (!state.importStatus) {
     importStatus.className = "import-status empty-state";
@@ -1118,6 +1266,16 @@ function renderImportStatus() {
 
   importStatus.className = "import-status context-group";
   importStatus.textContent = state.importStatus;
+}
+
+function updateImportPdfSide(index, side) {
+  const selection = state.importPdfSelections[index];
+  if (!selection) {
+    return;
+  }
+
+  selection.side = side === "away" ? "away" : "home";
+  renderImportPdfSelections();
 }
 
 function renderPlayerStatsTable() {
@@ -1328,7 +1486,7 @@ function getFlowStages(actionId = state.selectedActionId) {
       key: group.key,
       label: getContextLabel(group.key),
       shortLabel: getContextLabel(group.key),
-      description: t("captureContext", { label: getContextLabel(group.key).toLowerCase() }),
+      description: t("captureContext", { label: String(getContextLabel(group.key) ?? group.key).toLowerCase() }),
       options: group.options,
     })),
   ];
@@ -1620,7 +1778,7 @@ function deriveEvents({ playId, player, actionId, context, timestamp }) {
     case "CARD":
       return [
         createEvent(context.cardType === "YELLOW" ? "WARNING" : "CARD_RED", player.name, {
-          card_type: context.cardType.toLowerCase(),
+          card_type: String(context.cardType ?? "").toLowerCase(),
         }),
       ];
     case "SUSPENSION":
@@ -1777,13 +1935,14 @@ function seedDemoSequence() {
 
 async function importProfixioPdf(mode) {
   try {
-    const file = importFile.files?.[0];
-    if (!file) {
-      throw new Error(t("importPdfNoFile"));
+    const selections = state.importPdfSelections.filter((selection) => !selection.loading && !selection.error);
+    if (!selections.length) {
+      throw new Error(importFile.files?.length ? t("importPdfNoReadyFiles") : t("importPdfNoFile"));
     }
 
-    const payload = await parseProfixioTimelinePdf(file, importTeamSide.value);
-    const imported = mapProfixioImportPayload(payload);
+    const payloads = selections.map((selection) => buildProfixioTimelinePayloadFromAnalysis(selection.analysis, selection.side));
+    const importedPayloads = payloads.map((payload) => mapProfixioImportPayload(payload));
+    const imported = mergeImportedPayloads(importedPayloads);
 
     if (mode === "replace") {
       state.plays = [];
@@ -1809,12 +1968,7 @@ async function importProfixioPdf(mode) {
       }
     });
 
-    state.importStatus = t("importPdfSuccessDebug", {
-      plays: imported.plays.length,
-      events: imported.events.length,
-      match: imported.matchLabel,
-      debug: formatPdfDebug(payload.debug ?? {}),
-    });
+    state.importStatus = buildAggregateImportStatus(payloads, imported);
     closeImportDialog();
     render();
   } catch (error) {
@@ -1823,6 +1977,244 @@ async function importProfixioPdf(mode) {
     });
     render();
   }
+}
+
+async function handleImportFileSelection() {
+  await setImportFiles([...(importFile.files ?? [])], {
+    statusMessage: t("importPdfAnalyzing", { count: importFile.files?.length ?? 0 }),
+  });
+}
+
+async function setImportFiles(files, options = {}) {
+  const { statusMessage = null, sideResolver = null } = options;
+  state.importPdfSelectionRequestId += 1;
+  const requestId = state.importPdfSelectionRequestId;
+
+  if (!files.length) {
+    state.importPdfSelections = [];
+    state.importStatus = null;
+    render();
+    return;
+  }
+
+  state.importPdfSelections = files.map((file) => ({
+    file,
+    side: "home",
+    loading: true,
+    error: null,
+    match: null,
+    analysis: null,
+  }));
+  state.importStatus = statusMessage;
+  render();
+
+  const analyzed = await Promise.all(files.map(async (file) => {
+    try {
+      const analysis = await analyzeProfixioTimelinePdf(file);
+      const guessedSide = typeof sideResolver === "function" ? sideResolver(file, analysis) : null;
+      return {
+        file,
+        side: guessedSide === "away" ? "away" : "home",
+        loading: false,
+        error: null,
+        match: analysis.match,
+        analysis,
+      };
+    } catch (error) {
+      return {
+        file,
+        side: "home",
+        loading: false,
+        error: error instanceof Error ? error.message : String(error),
+        match: null,
+        analysis: null,
+      };
+    }
+  }));
+
+  if (requestId !== state.importPdfSelectionRequestId) {
+    return;
+  }
+
+  state.importPdfSelections = analyzed;
+  state.importStatus = null;
+  render();
+}
+
+async function loadSampleBundles() {
+  const embeddedBundles = getEmbeddedSampleBundles();
+  if (embeddedBundles.length) {
+    state.sampleBundles = embeddedBundles;
+    state.sampleBundlesLoading = false;
+    render();
+    return;
+  }
+
+  state.sampleBundlesLoading = true;
+  render();
+
+  try {
+    const response = await fetch("./SamplePDFs/manifest.json");
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const manifest = await response.json();
+    state.sampleBundles = Array.isArray(manifest.bundles) ? manifest.bundles : [];
+  } catch {
+    state.sampleBundles = [];
+  } finally {
+    state.sampleBundlesLoading = false;
+    render();
+  }
+}
+
+async function loadSampleBundle(bundleId) {
+  const bundle = state.sampleBundles.find((entry) => entry.id === bundleId);
+  if (!bundle) {
+    return;
+  }
+
+  state.sampleBundleActiveId = bundleId;
+  state.importStatus = t("sampleBundleLoading", { bundle: bundle.label });
+  render();
+
+  try {
+    const bundleFileNames = (bundle.files ?? []).map(getSampleBundleFileName).filter(Boolean);
+    const files = await Promise.all(bundleFileNames.map((fileName) => fetchSampleBundleFile(bundle.folder, fileName)));
+    await setImportFiles(files, {
+      statusMessage: t("importPdfAnalyzing", { count: files.length }),
+      sideResolver: (_, analysis) => guessSampleBundleSide(bundle, analysis),
+    });
+    state.importStatus = t("sampleBundleLoaded", { bundle: bundle.label, count: files.length });
+  } catch (error) {
+    state.importStatus = t("importErrorPrefix", {
+      message: t("sampleBundleFailed", {
+        bundle: bundle.label,
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    });
+    render();
+  } finally {
+    state.sampleBundleActiveId = null;
+    render();
+  }
+}
+
+async function fetchSampleBundleFile(folder, fileName) {
+  const embeddedFile = getEmbeddedSampleFile(folder, fileName);
+  if (embeddedFile) {
+    return createPdfFileFromBase64(fileName, embeddedFile.data);
+  }
+
+  const encodedPath = ["SamplePDFs", folder, fileName].map((segment) => encodeURIComponent(segment)).join("/");
+  const response = await fetch(`./${encodedPath}`);
+  if (!response.ok) {
+    throw new Error(`${fileName} (HTTP ${response.status})`);
+  }
+
+  const buffer = await response.arrayBuffer();
+  return new File([buffer], fileName, { type: "application/pdf" });
+}
+
+function getEmbeddedSampleBundles() {
+  const bundles = window.__EMBEDDED_SAMPLE_BUNDLES__;
+  return Array.isArray(bundles) ? bundles : [];
+}
+
+function getEmbeddedSampleFile(folder, fileName) {
+  const bundle = getEmbeddedSampleBundles().find((entry) => entry.folder === folder);
+  if (!bundle) {
+    return null;
+  }
+
+  const file = (bundle.files ?? []).find((entry) => {
+    if (typeof entry === "string") {
+      return entry === fileName;
+    }
+
+    return entry?.name === fileName;
+  });
+
+  return typeof file === "string" ? null : file ?? null;
+}
+
+function getSampleBundleFileName(fileEntry) {
+  return typeof fileEntry === "string" ? fileEntry : fileEntry?.name ?? "";
+}
+
+function createPdfFileFromBase64(fileName, base64Data) {
+  const binary = atob(base64Data);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return new File([bytes], fileName, { type: "application/pdf" });
+}
+
+function guessSampleBundleSide(bundle, analysis) {
+  const teamKeys = unique([
+    bundle.label,
+    bundle.folder,
+  ].map(normalizeTeamMatchKey));
+  const homeKey = normalizeTeamMatchKey(analysis.match?.homeTeam);
+  const awayKey = normalizeTeamMatchKey(analysis.match?.awayTeam);
+
+  if (teamKeys.includes(homeKey)) {
+    return "home";
+  }
+  if (teamKeys.includes(awayKey)) {
+    return "away";
+  }
+
+  return "home";
+}
+
+function normalizeTeamMatchKey(value) {
+  return String(value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function mergeImportedPayloads(importedPayloads) {
+  const mergedPlayers = new Map();
+  importedPayloads.forEach((payload) => {
+    payload.players.forEach((player) => {
+      if (!mergedPlayers.has(player.id)) {
+        mergedPlayers.set(player.id, player);
+      }
+    });
+  });
+
+  return {
+    plays: importedPayloads.flatMap((payload) => payload.plays),
+    events: importedPayloads.flatMap((payload) => payload.events),
+    players: [...mergedPlayers.values()].sort(compareImportedPlayers),
+    matchLabel: importedPayloads.map((payload) => payload.matchLabel).join(", "),
+  };
+}
+
+function buildAggregateImportStatus(payloads, imported) {
+  const lines = [
+    t("importPdfSummary", {
+      plays: imported.plays.length,
+      events: imported.events.length,
+      games: payloads.length,
+    }),
+  ];
+
+  payloads.forEach((payload) => {
+    const teamLabel = payload.teamName || (payload.side === "away" ? payload.match?.awayTeam : payload.match?.homeTeam);
+    lines.push(`- ${payload.match?.homeTeam ?? "?"} vs ${payload.match?.awayTeam ?? "?"} -> ${teamLabel}`);
+  });
+
+  return lines.join("\n");
 }
 
 function mapProfixioImportPayload(payload) {
@@ -1915,7 +2307,7 @@ function mapProfixioImportPayload(payload) {
   return { plays, events, matchLabel, players: importedPlayers };
 }
 
-async function parseProfixioTimelinePdf(file, side) {
+async function analyzeProfixioTimelinePdf(file) {
   if (typeof DecompressionStream === "undefined") {
     throw new Error(t("importPdfUnsupported"));
   }
@@ -1954,6 +2346,11 @@ async function parseProfixioTimelinePdf(file, side) {
   const parsedRows = buildPdfTimelineRows(rows);
   debug.parsedTimelineRows = parsedRows.length;
   const match = parsePdfMatchMetadata(rows, parsedRows, debug);
+  return { file, debug, match, parsedRows };
+}
+
+function buildProfixioTimelinePayloadFromAnalysis(analysis, side) {
+  const { file, debug, match, parsedRows } = analysis;
   const teamName = side === "away" ? match.awayTeam : match.homeTeam;
   const teamRows = parsedRows.filter((row) => matchesSelectedPdfSide(row.teamName, teamName));
   const filteredTimeline = collapsePdfPenaltyAwards(teamRows
@@ -1985,6 +2382,7 @@ async function parseProfixioTimelinePdf(file, side) {
   }
 
   return {
+    side,
     teamName,
     players: extractPdfPlayers(teamRows, teamName, side),
     match: {
@@ -1997,6 +2395,11 @@ async function parseProfixioTimelinePdf(file, side) {
     timeline: filteredTimeline,
     debug,
   };
+}
+
+async function parseProfixioTimelinePdf(file, side) {
+  const analysis = await analyzeProfixioTimelinePdf(file);
+  return buildProfixioTimelinePayloadFromAnalysis(analysis, side);
 }
 
 function mapImportedActionToPlay(entry) {
@@ -2419,7 +2822,7 @@ function matchesSelectedPdfSide(rowTeamName, selectedTeamName) {
     return false;
   }
 
-  const normalize = (value) => value
+  const normalize = (value) => String(value ?? "")
     .toLowerCase()
     .replace(/\.\.\.$/, "")
     .replace(/\.\.\./g, "")
@@ -2736,7 +3139,7 @@ function formatContextOption(key, value) {
   }
 
   return translations[state.language].optionLabel[value]
-    ?? value
+    ?? String(value ?? "")
       .toLowerCase()
       .replaceAll("_", " ")
       .replace(/\b\w/g, (character) => character.toUpperCase());

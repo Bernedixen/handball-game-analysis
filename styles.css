@@ -526,6 +526,37 @@ button {
   gap: 16px;
 }
 
+.import-pdf-list {
+  display: grid;
+  gap: 12px;
+}
+
+.sample-bundles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sample-bundle-button {
+  min-width: 200px;
+}
+
+.import-pdf-card {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid var(--line);
+}
+
+.import-pdf-card-header {
+  margin-bottom: 12px;
+}
+
+.import-pdf-card-body {
+  display: grid;
+  gap: 12px;
+}
+
 .import-group {
   display: grid;
   gap: 10px;
@@ -533,7 +564,8 @@ button {
 
 .import-side-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  grid-template-columns: minmax(220px, 280px);
+  justify-content: end;
   gap: 12px;
   align-items: end;
 }

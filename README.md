@@ -4,7 +4,23 @@ Static web app for live handball scouting and match event entry.
 
 ## Local use
 
-Open [index.html](/c:/tmp/codex_playground/HandbollGameAnalysis/index.html) in a browser.
+You can open [index.html](/c:/tmp/codex_playground/HandbollGameAnalysis/index.html) directly in a browser.
+
+Bundled sample PDF folders are embedded into the static app, so they also work when opening the app directly from disk.
+
+If you add or replace files under `SamplePDFs`, regenerate the embedded bundle with:
+
+```bash
+node scripts/embed-sample-pdfs.mjs
+```
+
+Running from a local static server is still useful during development:
+
+```bash
+python -m http.server 8000
+```
+
+Then open `http://localhost:8000`.
 
 ## Deploy on Render
 

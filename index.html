@@ -145,17 +145,16 @@
     <div class="settings-panel import-panel">
       <label class="context-group import-group" for="import-file">
         <p id="import-file-label" class="context-group-label">Imported PDF</p>
-        <p id="import-file-note" class="stage-copy">Upload a Profixio timeline PDF and choose which side to import.</p>
-        <input id="import-file" class="import-file" type="file" accept=".pdf,application/pdf">
+        <p id="import-file-note" class="stage-copy">Upload one or more Profixio timeline PDFs and choose home or away for each file.</p>
+        <input id="import-file" class="import-file" type="file" accept=".pdf,application/pdf" multiple>
       </label>
+      <div class="context-group import-group">
+        <p id="sample-bundles-label" class="context-group-label">Sample bundles</p>
+        <p id="sample-bundles-note" class="stage-copy">Load one of the bundled sample folders directly into the importer.</p>
+        <div id="sample-bundles" class="sample-bundles empty-state">No sample bundles available.</div>
+      </div>
+      <div id="import-pdf-list" class="import-pdf-list empty-state">No PDFs selected.</div>
       <div class="import-side-row">
-        <label class="context-group import-group" for="import-team-side">
-          <p id="import-team-label" class="context-group-label">Team side</p>
-          <select id="import-team-side" class="import-select">
-            <option value="home">Home team</option>
-            <option value="away">Away team</option>
-          </select>
-        </label>
         <button id="import-pdf" class="primary-button" type="button">Import PDF</button>
       </div>
       <div id="import-status" class="import-status empty-state">No import loaded.</div>
@@ -177,6 +176,7 @@
     </div>
   </dialog>
 
+  <script src="SamplePDFs/embedded-samples.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

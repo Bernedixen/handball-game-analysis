@@ -1,0 +1,36 @@
+{
+  "bundles": [
+    {
+      "id": "hf-karlskrona",
+      "label": "HF Karlskrona",
+      "folder": "HF_Karlskrona",
+      "files": [
+        "GF_Kroppskultur_1_vs_HF_Karlskrona.pdf",
+        "HF_Karlskrona_vs_HK_Guldkroken_Hjo.pdf",
+        "HF_Karlskrona_vs_IK_Sävehof_Svart.pdf",
+        "HF_Karlskrona_vs_KFUM_Lundagård.pdf",
+        "HF_Karlskrona_vs_Lugi_HF_1.pdf",
+        "HF_Karlskrona_vs_Stenungsunds_HK.pdf",
+        "HF_Karlskrona_vs_Ystads_If_HF.pdf",
+        "Mörrums_GOIS_HK_vs_HF_Karlskrona.pdf",
+        "Tollarps_IF_vs_HF_Karlskrona.pdf"
+      ]
+    },
+    {
+      "id": "kfum-kalmar-hk",
+      "label": "KFUM Kalmar HK",
+      "folder": "KFUM_Kalmar_HK",
+      "files": [
+        "Eslövs_HJ_vs_KFUM_Kalmar_HK.pdf",
+        "HK_Björnen_vs_KFUM_Kalmar_HK.pdf",
+        "IFK_Bankeryd_vs_KFUM_Kalmar_HK.pdf",
+        "IK_Sävehof_Svart_vs_KFUM_Kalmar_HK.pdf",
+        "KFUM_Kalmar_HK_vs_Anderstorps_SK.pdf",
+        "KFUM_Kalmar_HK_vs_Skövde_HF_1.pdf",
+        "KFUM_Kalmar_vs_Särökometernas_HK.pdf",
+        "Lödde_Vikings_HK_vs_KFUM_Kalmar_HK_2.pdf",
+        "Lödde_Vikings_HK_vs_KFUM_Kalmar_HK.pdf"
+      ]
+    }
+  ]
+}
